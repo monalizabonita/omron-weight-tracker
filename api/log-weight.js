@@ -58,8 +58,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const auth = req.headers['authorization'] || '';
-  if (auth !== `Bearer ${process.env.WEBHOOK_SECRET}`) {
+  const auth = (req.headers['authorization'] || '').trim().toLowerCase();
+  const expected = `bearer ${(process.env.WEBHOOK_SECRET || '').trim()}`.toLowerCase();
+  if (!auth || auth !== expected) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
