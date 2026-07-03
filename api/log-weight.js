@@ -65,13 +65,21 @@ export default async function handler(req, res) {
     return;
   }
 
-  const body = req.body || {};
+  const rawBody = req.body || {};
+  const body = {};
+  for (const key of Object.keys(rawBody)) {
+    body[key.toLowerCase()] = rawBody[key];
+  }
+
   const weight = typeof body.weight === 'number' ? body.weight : parseFloat(body.weight);
-  const date = typeof body.date === 'string' ? body.date.trim() : '';
-  const unit = typeof body.unit === 'string' ? body.unit.trim() : '';
+  const date = typeof body.date === 'string' ? body.date.trim() : String(body.date ?? '').trim();
+  const unit = typeof body.unit === 'string' ? body.unit.trim().toLowerCase() : '';
 
   if (!Number.isFinite(weight) || !date) {
-    res.status(400).json({ error: 'Body must include numeric "weight" and "date" (YYYY-MM-DD)' });
+    res.status(400).json({
+      error: 'Body must include numeric "weight" and "date" (YYYY-MM-DD)',
+      received: rawBody,
+    });
     return;
   }
 
