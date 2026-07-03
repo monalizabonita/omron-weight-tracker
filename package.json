@@ -1,5 +1,8 @@
 {
   "name": "omron-weight-tracker",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@vercel/functions": "^1.6.0"
+  }
 }
