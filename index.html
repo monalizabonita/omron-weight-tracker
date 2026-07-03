@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weight Tracker</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --page: #f9f9f7;
+    --card: #ffffff;
+    --text: #1a1d23;
+    --muted: #5b6270;
+    --faint: #898781;
+    --border: #e2e5ea;
+    --gridline: #e1e0d9;
+    --series: #2a78d6;
+    --series-wash: rgba(42, 120, 214, 0.08);
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 1px 8px rgba(11,11,11,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101216;
+      --page: #0d0d0d;
+      --card: #1a1d23;
+      --text: #edeef0;
+      --muted: #9aa1ad;
+      --faint: #7c8290;
+      --border: #2b2f37;
+      --gridline: #2c2c2a;
+      --series: #3987e5;
+      --series-wash: rgba(57, 135, 229, 0.12);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 8px rgba(0,0,0,0.2);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 40px 24px 56px; }
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .stat-row { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
+  .stat-label { color: var(--muted); font-size: 0.82rem; margin: 0 0 6px; }
+  .stat-value { font-size: 1.9rem; font-weight: 600; margin: 0; }
+  .stat-unit { font-size: 1rem; font-weight: 400; color: var(--muted); }
+  .stat-delta { font-size: 0.86rem; margin-top: 6px; }
+  .stat-delta.up { color: #d03b3b; }
+  .stat-delta.down { color: #0ca30c; }
+  .stat-delta.flat { color: var(--muted); }
+  .chart-card { margin-bottom: 20px; }
+  .chart-card h2 { font-size: 1rem; margin: 0 0 16px; }
+  .chart-wrap { position: relative; }
+  svg { width: 100%; height: 260px; display: block; overflow: visible; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--faint); font-size: 11px; }
+  .line-path { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .area-path { fill: var(--series-wash); }
+  .end-dot { fill: var(--series); stroke: var(--card); stroke-width: 2; }
+  .crosshair { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
+  .hover-dot { fill: var(--series); stroke: var(--card); stroke-width: 2; }
+  .tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--text);
+    color: var(--card);
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    line-height: 1.4;
+    z-index: 10;
+    display: none;
+    white-space: nowrap;
+  }
+  .empty { color: var(--muted); font-size: 0.92rem; }
+  .setup-note { color: var(--faint); font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
+  footer { color: var(--faint); font-size: 0.78rem; margin-top: 24px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <h1>Weight Tracker</h1>
+    <p class="subtitle">Fed automatically from Apple Health (OMRON Connect) via an iOS Shortcuts automation.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="card">
+      <p class="stat-label">Latest</p>
+      <p class="stat-value" id="stat-latest">—</p>
+      <p class="stat-delta" id="stat-latest-date"></p>
+    </div>
+    <div class="card">
+      <p class="stat-label">Change vs 7 days ago</p>
+      <p class="stat-value" id="stat-7d">—</p>
+    </div>
+    <div class="card">
+      <p class="stat-label">Change vs 30 days ago</p>
+      <p class="stat-value" id="stat-30d">—</p>
+    </div>
+  </div>
+
+  <div class="card chart-card">
+    <h2>Trend</h2>
+    <div class="chart-wrap" id="chart-wrap">
+      <p class="empty" id="chart-empty">No entries yet — log your first weight to start the trend.</p>
+    </div>
+  </div>
+
+  <footer>
+    Personal tracker — not medical advice. Weight is logged from Apple Health, originally recorded by the OMRON Connect app.
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  const RAW_BASE = 'https://raw.githubusercontent.com/monalizabonita/omron-weight-tracker/main/';
+  const REFRESH_MS = 5 * 60 * 1000;
+
+  function toKg(entry) {
+    return entry.unit === 'lb' ? entry.weight * 0.453592 : entry.weight;
+  }
+
+  function fmt(kg) {
+    return kg.toFixed(1);
+  }
+
+  function loadHistory() {
+    fetch(RAW_BASE + 'data/weight-history.json?_=' + Date.now())
+      .then(r => r.json())
+      .then(render)
+      .catch(() => {
+        document.getElementById('chart-empty').textContent = 'History unavailable right now.';
+      });
+  }
+
+  function findClosestOnOrBefore(history, targetMs) {
+    let best = null;
+    for (const h of history) {
+      const t = new Date(h.date).getTime();
+      if (t <= targetMs && (best === null || t > new Date(best.date).getTime())) best = h;
+    }
+    return best;
+  }
+
+  function render(rawHistory) {
+    if (!Array.isArray(rawHistory) || rawHistory.length === 0) return;
+
+    const history = rawHistory
+      .map(h => ({ date: h.date, kg: toKg(h) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const latest = history[history.length - 1];
+    document.getElementById('stat-latest').innerHTML = `${fmt(latest.kg)}<span class="stat-unit"> kg</span>`;
+    document.getElementById('stat-latest-date').textContent = latest.date;
+
+    const now = new Date(latest.date).getTime();
+    const day = 24 * 60 * 60 * 1000;
+    const past7 = findClosestOnOrBefore(history, now - 7 * day);
+    const past30 = findClosestOnOrBefore(history, now - 30 * day);
+    renderDeltaBlock('stat-7d', latest.kg, past7 ? past7.kg : null);
+    renderDeltaBlock('stat-30d', latest.kg, past30 ? past30.kg : null);
+
+    if (history.length < 2) {
+      document.getElementById('chart-empty').textContent = 'Just one entry so far — the trend line appears after your next log.';
+      return;
+    }
+
+    document.getElementById('chart-empty').style.display = 'none';
+    drawChart(history);
+  }
+
+  function renderDeltaBlock(elId, current, past) {
+    const el = document.getElementById(elId);
+    if (past === null || past === undefined) {
+      el.innerHTML = '<span class="stat-delta flat">Not enough history</span>';
+      return;
+    }
+    const diff = current - past;
+    const sign = diff > 0 ? '+' : '';
+    const cls = Math.abs(diff) < 0.05 ? 'flat' : diff > 0 ? 'up' : 'down';
+    el.innerHTML = `<span class="${cls}">${sign}${fmt(diff)} kg</span>`;
+  }
+
+  function drawChart(history) {
+    const wrap = document.getElementById('chart-wrap');
+    const width = wrap.clientWidth || 800;
+    const height = 260;
+    const padL = 40, padR = 16, padT = 16, padB = 28;
+
+    const times = history.map(h => new Date(h.date).getTime());
+    const weights = history.map(h => h.kg);
+    const tMin = Math.min(...times), tMax = Math.max(...times);
+    const wMin = Math.min(...weights), wMax = Math.max(...weights);
+    const wPad = Math.max((wMax - wMin) * 0.15, 0.5);
+    const yMin = wMin - wPad, yMax = wMax + wPad;
+
+    const x = t => tMax === tMin ? padL : padL + ((t - tMin) / (tMax - tMin)) * (width - padL - padR);
+    const y = w => padT + (1 - (w - yMin) / (yMax - yMin)) * (height - padT - padB);
+
+    const points = history.map(h => ({ x: x(new Date(h.date).getTime()), y: y(h.kg), date: h.date, kg: h.kg }));
+    const linePath = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+    const areaPath = linePath + ` L ${points[points.length - 1].x.toFixed(1)} ${(height - padB).toFixed(1)} L ${points[0].x.toFixed(1)} ${(height - padB).toFixed(1)} Z`;
+
+    const gridY = [yMin, (yMin + yMax) / 2, yMax];
+
+    let svg = `<svg viewBox="0 0 ${width} ${height}" id="chart-svg">`;
+    gridY.forEach(gy => {
+      const gyPos = y(gy).toFixed(1);
+      svg += `<line class="gridline" x1="${padL}" y1="${gyPos}" x2="${width - padR}" y2="${gyPos}" />`;
+      svg += `<text class="axis-label" x="4" y="${(parseFloat(gyPos) + 4).toFixed(1)}">${gy.toFixed(1)}</text>`;
+    });
+    svg += `<path class="area-path" d="${areaPath}" />`;
+    svg += `<path class="line-path" d="${linePath}" />`;
+    svg += `<circle class="end-dot" cx="${points[points.length - 1].x.toFixed(1)}" cy="${points[points.length - 1].y.toFixed(1)}" r="4" />`;
+    svg += `<line class="crosshair" id="crosshair" x1="0" y1="${padT}" x2="0" y2="${height - padB}" style="display:none" />`;
+    svg += `<circle class="hover-dot" id="hover-dot" cx="0" cy="0" r="4" style="display:none" />`;
+    svg += `<rect id="hit-rect" x="${padL}" y="${padT}" width="${width - padL - padR}" height="${height - padT - padB}" fill="transparent" />`;
+    svg += `</svg>`;
+
+    wrap.innerHTML = svg;
+
+    const svgEl = document.getElementById('chart-svg');
+    const hitRect = document.getElementById('hit-rect');
+    const crosshair = document.getElementById('crosshair');
+    const hoverDot = document.getElementById('hover-dot');
+    const tooltip = document.getElementById('tooltip');
+
+    hitRect.addEventListener('mousemove', e => {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      const mx = (e.clientX - rect.left) * scaleX;
+      let closest = points[0];
+      let bestDist = Infinity;
+      for (const p of points) {
+        const d = Math.abs(p.x - mx);
+        if (d < bestDist) { bestDist = d; closest = p; }
+      }
+      crosshair.setAttribute('x1', closest.x);
+      crosshair.setAttribute('x2', closest.x);
+      crosshair.style.display = 'block';
+      hoverDot.setAttribute('cx', closest.x);
+      hoverDot.setAttribute('cy', closest.y);
+      hoverDot.style.display = 'block';
+      tooltip.textContent = `${closest.date}: ${fmt(closest.kg)} kg`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+    });
+    hitRect.addEventListener('mouseleave', () => {
+      crosshair.style.display = 'none';
+      hoverDot.style.display = 'none';
+      tooltip.style.display = 'none';
+    });
+  }
+
+  loadHistory();
+  setInterval(loadHistory, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadHistory();
+  });
+  window.addEventListener('resize', loadHistory);
+</script>
+</body>
+</html>
