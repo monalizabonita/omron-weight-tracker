@@ -108,9 +108,32 @@
   </div>
 
   <div class="card chart-card">
-    <h2>Trend</h2>
+    <h2>Weight Trend</h2>
     <div class="chart-wrap" id="chart-wrap">
       <p class="empty" id="chart-empty">No entries yet — log your first weight to start the trend.</p>
+    </div>
+  </div>
+
+  <div class="stat-row" id="bodyfat-stat-row" style="display:none">
+    <div class="card">
+      <p class="stat-label">Body Fat — Latest</p>
+      <p class="stat-value" id="bf-stat-latest">—</p>
+      <p class="stat-delta" id="bf-stat-latest-date"></p>
+    </div>
+    <div class="card">
+      <p class="stat-label">Change vs 7 days ago</p>
+      <p class="stat-value" id="bf-stat-7d">—</p>
+    </div>
+    <div class="card">
+      <p class="stat-label">Change vs 30 days ago</p>
+      <p class="stat-value" id="bf-stat-30d">—</p>
+    </div>
+  </div>
+
+  <div class="card chart-card" id="bodyfat-chart-card" style="display:none">
+    <h2>Body Fat % Trend</h2>
+    <div class="chart-wrap" id="bf-chart-wrap">
+      <p class="empty" id="bf-chart-empty">Just one entry so far — the trend line appears after your next log.</p>
     </div>
   </div>
 
@@ -142,43 +165,80 @@
       });
   }
 
-  function findClosestOnOrBefore(history, targetMs) {
+  function render(rawHistory) {
+    if (!Array.isArray(rawHistory) || rawHistory.length === 0) return;
+
+    const weightSeries = rawHistory
+      .map(h => ({ date: h.date, value: toKg(h) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    renderMetric({
+      series: weightSeries,
+      unitLabel: 'kg',
+      statLatestId: 'stat-latest',
+      statLatestDateId: 'stat-latest-date',
+      stat7dId: 'stat-7d',
+      stat30dId: 'stat-30d',
+      chartWrapId: 'chart-wrap',
+      chartEmptyId: 'chart-empty',
+      chartInstanceId: 'weight',
+    });
+
+    const bodyFatSeries = rawHistory
+      .filter(h => typeof h.body_fat_percent === 'number' && Number.isFinite(h.body_fat_percent))
+      .map(h => ({ date: h.date, value: h.body_fat_percent }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    if (bodyFatSeries.length > 0) {
+      document.getElementById('bodyfat-stat-row').style.display = '';
+      document.getElementById('bodyfat-chart-card').style.display = '';
+      renderMetric({
+        series: bodyFatSeries,
+        unitLabel: '%',
+        statLatestId: 'bf-stat-latest',
+        statLatestDateId: 'bf-stat-latest-date',
+        stat7dId: 'bf-stat-7d',
+        stat30dId: 'bf-stat-30d',
+        chartWrapId: 'bf-chart-wrap',
+        chartEmptyId: 'bf-chart-empty',
+        chartInstanceId: 'bodyfat',
+      });
+    }
+  }
+
+  function renderMetric(cfg) {
+    const { series, unitLabel } = cfg;
+    const latest = series[series.length - 1];
+    document.getElementById(cfg.statLatestId).innerHTML = `${fmt(latest.value)}<span class="stat-unit"> ${unitLabel}</span>`;
+    document.getElementById(cfg.statLatestDateId).textContent = latest.date;
+
+    const now = new Date(latest.date).getTime();
+    const day = 24 * 60 * 60 * 1000;
+    const past7 = findClosestOnOrBefore(series, now - 7 * day);
+    const past30 = findClosestOnOrBefore(series, now - 30 * day);
+    renderDeltaBlock(cfg.stat7dId, latest.value, past7 ? past7.value : null, unitLabel);
+    renderDeltaBlock(cfg.stat30dId, latest.value, past30 ? past30.value : null, unitLabel);
+
+    const emptyEl = document.getElementById(cfg.chartEmptyId);
+    if (series.length < 2) {
+      emptyEl.style.display = '';
+      emptyEl.textContent = 'Just one entry so far — the trend line appears after your next log.';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    drawChart(cfg.chartWrapId, cfg.chartInstanceId, series, unitLabel);
+  }
+
+  function findClosestOnOrBefore(series, targetMs) {
     let best = null;
-    for (const h of history) {
+    for (const h of series) {
       const t = new Date(h.date).getTime();
       if (t <= targetMs && (best === null || t > new Date(best.date).getTime())) best = h;
     }
     return best;
   }
 
-  function render(rawHistory) {
-    if (!Array.isArray(rawHistory) || rawHistory.length === 0) return;
-
-    const history = rawHistory
-      .map(h => ({ date: h.date, kg: toKg(h) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    const latest = history[history.length - 1];
-    document.getElementById('stat-latest').innerHTML = `${fmt(latest.kg)}<span class="stat-unit"> kg</span>`;
-    document.getElementById('stat-latest-date').textContent = latest.date;
-
-    const now = new Date(latest.date).getTime();
-    const day = 24 * 60 * 60 * 1000;
-    const past7 = findClosestOnOrBefore(history, now - 7 * day);
-    const past30 = findClosestOnOrBefore(history, now - 30 * day);
-    renderDeltaBlock('stat-7d', latest.kg, past7 ? past7.kg : null);
-    renderDeltaBlock('stat-30d', latest.kg, past30 ? past30.kg : null);
-
-    if (history.length < 2) {
-      document.getElementById('chart-empty').textContent = 'Just one entry so far — the trend line appears after your next log.';
-      return;
-    }
-
-    document.getElementById('chart-empty').style.display = 'none';
-    drawChart(history);
-  }
-
-  function renderDeltaBlock(elId, current, past) {
+  function renderDeltaBlock(elId, current, past, unitLabel) {
     const el = document.getElementById(elId);
     if (past === null || past === undefined) {
       el.innerHTML = '<span class="stat-delta flat">Not enough history</span>';
@@ -187,32 +247,36 @@
     const diff = current - past;
     const sign = diff > 0 ? '+' : '';
     const cls = Math.abs(diff) < 0.05 ? 'flat' : diff > 0 ? 'up' : 'down';
-    el.innerHTML = `<span class="${cls}">${sign}${fmt(diff)} kg</span>`;
+    el.innerHTML = `<span class="${cls}">${sign}${fmt(diff)} ${unitLabel}</span>`;
   }
 
-  function drawChart(history) {
-    const wrap = document.getElementById('chart-wrap');
+  function drawChart(wrapId, instanceId, series, unitLabel) {
+    const wrap = document.getElementById(wrapId);
     const width = wrap.clientWidth || 800;
     const height = 260;
     const padL = 40, padR = 16, padT = 16, padB = 28;
 
-    const times = history.map(h => new Date(h.date).getTime());
-    const weights = history.map(h => h.kg);
+    const times = series.map(h => new Date(h.date).getTime());
+    const values = series.map(h => h.value);
     const tMin = Math.min(...times), tMax = Math.max(...times);
-    const wMin = Math.min(...weights), wMax = Math.max(...weights);
-    const wPad = Math.max((wMax - wMin) * 0.15, 0.5);
-    const yMin = wMin - wPad, yMax = wMax + wPad;
+    const vMin = Math.min(...values), vMax = Math.max(...values);
+    const vPad = Math.max((vMax - vMin) * 0.15, 0.5);
+    const yMin = vMin - vPad, yMax = vMax + vPad;
 
     const x = t => tMax === tMin ? padL : padL + ((t - tMin) / (tMax - tMin)) * (width - padL - padR);
-    const y = w => padT + (1 - (w - yMin) / (yMax - yMin)) * (height - padT - padB);
+    const y = v => padT + (1 - (v - yMin) / (yMax - yMin)) * (height - padT - padB);
 
-    const points = history.map(h => ({ x: x(new Date(h.date).getTime()), y: y(h.kg), date: h.date, kg: h.kg }));
+    const points = series.map(h => ({ x: x(new Date(h.date).getTime()), y: y(h.value), date: h.date, value: h.value }));
     const linePath = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
     const areaPath = linePath + ` L ${points[points.length - 1].x.toFixed(1)} ${(height - padB).toFixed(1)} L ${points[0].x.toFixed(1)} ${(height - padB).toFixed(1)} Z`;
 
     const gridY = [yMin, (yMin + yMax) / 2, yMax];
+    const svgId = `chart-svg-${instanceId}`;
+    const crosshairId = `crosshair-${instanceId}`;
+    const hoverDotId = `hover-dot-${instanceId}`;
+    const hitRectId = `hit-rect-${instanceId}`;
 
-    let svg = `<svg viewBox="0 0 ${width} ${height}" id="chart-svg">`;
+    let svg = `<svg viewBox="0 0 ${width} ${height}" id="${svgId}">`;
     gridY.forEach(gy => {
       const gyPos = y(gy).toFixed(1);
       svg += `<line class="gridline" x1="${padL}" y1="${gyPos}" x2="${width - padR}" y2="${gyPos}" />`;
@@ -221,17 +285,17 @@
     svg += `<path class="area-path" d="${areaPath}" />`;
     svg += `<path class="line-path" d="${linePath}" />`;
     svg += `<circle class="end-dot" cx="${points[points.length - 1].x.toFixed(1)}" cy="${points[points.length - 1].y.toFixed(1)}" r="4" />`;
-    svg += `<line class="crosshair" id="crosshair" x1="0" y1="${padT}" x2="0" y2="${height - padB}" style="display:none" />`;
-    svg += `<circle class="hover-dot" id="hover-dot" cx="0" cy="0" r="4" style="display:none" />`;
-    svg += `<rect id="hit-rect" x="${padL}" y="${padT}" width="${width - padL - padR}" height="${height - padT - padB}" fill="transparent" />`;
+    svg += `<line class="crosshair" id="${crosshairId}" x1="0" y1="${padT}" x2="0" y2="${height - padB}" style="display:none" />`;
+    svg += `<circle class="hover-dot" id="${hoverDotId}" cx="0" cy="0" r="4" style="display:none" />`;
+    svg += `<rect id="${hitRectId}" x="${padL}" y="${padT}" width="${width - padL - padR}" height="${height - padT - padB}" fill="transparent" />`;
     svg += `</svg>`;
 
     wrap.innerHTML = svg;
 
-    const svgEl = document.getElementById('chart-svg');
-    const hitRect = document.getElementById('hit-rect');
-    const crosshair = document.getElementById('crosshair');
-    const hoverDot = document.getElementById('hover-dot');
+    const svgEl = document.getElementById(svgId);
+    const hitRect = document.getElementById(hitRectId);
+    const crosshair = document.getElementById(crosshairId);
+    const hoverDot = document.getElementById(hoverDotId);
     const tooltip = document.getElementById('tooltip');
 
     hitRect.addEventListener('mousemove', e => {
@@ -250,7 +314,7 @@
       hoverDot.setAttribute('cx', closest.x);
       hoverDot.setAttribute('cy', closest.y);
       hoverDot.style.display = 'block';
-      tooltip.textContent = `${closest.date}: ${fmt(closest.kg)} kg`;
+      tooltip.textContent = `${closest.date}: ${fmt(closest.value)} ${unitLabel}`;
       tooltip.style.display = 'block';
       tooltip.style.left = (e.clientX + 12) + 'px';
       tooltip.style.top = (e.clientY + 12) + 'px';

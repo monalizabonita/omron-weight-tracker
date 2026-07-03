@@ -12,7 +12,7 @@ function todayInManila() {
   }).format(new Date());
 }
 
-async function saveToGithub(weight, unit, date) {
+async function saveToGithub(weight, unit, date, bodyFatPercent) {
   const apiUrl = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
   const ghHeaders = {
     Authorization: `token ${process.env.GH_TOKEN}`,
@@ -41,6 +41,7 @@ async function saveToGithub(weight, unit, date) {
     date,
     weight,
     unit: unit === 'lb' ? 'lb' : 'kg',
+    body_fat_percent: bodyFatPercent,
     logged_at: new Date().toISOString(),
   });
   history.sort((a, b) => a.date.localeCompare(b.date));
@@ -85,6 +86,13 @@ export default async function handler(req, res) {
   const date = rawDate || todayInManila();
   const unit = typeof body.unit === 'string' ? body.unit.trim().toLowerCase() : '';
 
+  const bodyFatKey = body.bodyfat !== undefined ? body.bodyfat : body.body_fat_percent;
+  const rawBodyFat = typeof bodyFatKey === 'number' ? bodyFatKey : parseFloat(bodyFatKey);
+  let bodyFatPercent = Number.isFinite(rawBodyFat) ? rawBodyFat : null;
+  if (bodyFatPercent !== null && bodyFatPercent > 0 && bodyFatPercent <= 1) {
+    bodyFatPercent = bodyFatPercent * 100; // Health sometimes reports this as a 0-1 fraction
+  }
+
   if (!Number.isFinite(weight)) {
     res.status(400).json({
       error: 'Body must include a numeric "weight"',
@@ -94,5 +102,5 @@ export default async function handler(req, res) {
   }
 
   res.status(202).json({ ok: true, queued: true });
-  waitUntil(saveToGithub(weight, unit, date));
+  waitUntil(saveToGithub(weight, unit, date, bodyFatPercent));
 }
