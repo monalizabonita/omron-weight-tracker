@@ -13,8 +13,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { weight, unit, date } = req.body || {};
-  if (typeof weight !== 'number' || !Number.isFinite(weight) || !date) {
+  const body = req.body || {};
+  const weight = typeof body.weight === 'number' ? body.weight : parseFloat(body.weight);
+  const date = typeof body.date === 'string' ? body.date.trim() : '';
+  const unit = typeof body.unit === 'string' ? body.unit.trim() : '';
+
+  if (!Number.isFinite(weight) || !date) {
     res.status(400).json({ error: 'Body must include numeric "weight" and "date" (YYYY-MM-DD)' });
     return;
   }
