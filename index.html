@@ -145,7 +145,7 @@
 <div class="tooltip" id="tooltip"></div>
 
 <script>
-  const RAW_BASE = 'https://raw.githubusercontent.com/monalizabonita/omron-weight-tracker/main/';
+  const HISTORY_API = '/api/history';
   const REFRESH_MS = 5 * 60 * 1000;
 
   function toKg(entry) {
@@ -156,13 +156,24 @@
     return kg.toFixed(1);
   }
 
+  let lastHistory = null;
+
   function loadHistory() {
-    fetch(RAW_BASE + 'data/weight-history.json?_=' + Date.now())
+    fetch(HISTORY_API + '?_=' + Date.now())
       .then(r => r.json())
-      .then(render)
+      .then(data => {
+        lastHistory = data;
+        render(data);
+      })
       .catch(() => {
         document.getElementById('chart-empty').textContent = 'History unavailable right now.';
       });
+  }
+
+  // Resizing only needs to redraw the SVG at the new width, not re-fetch from the network —
+  // re-render from the already-loaded data instead.
+  function rerenderFromCache() {
+    if (lastHistory) render(lastHistory);
   }
 
   function render(rawHistory) {
@@ -331,7 +342,11 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') loadHistory();
   });
-  window.addEventListener('resize', loadHistory);
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(rerenderFromCache, 150);
+  });
 </script>
 </body>
 </html>
