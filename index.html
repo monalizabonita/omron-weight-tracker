@@ -440,13 +440,31 @@
   const LOG_INJECTION_API = '/api/log-injection';
   const INJECTION_INTERVAL_DAYS = 7; // weekly injection
 
+  // Date math below stays entirely in UTC-space (explicit "Z" suffix + getUTC*/setUTC*) to
+  // avoid a day-shift bug: parsing "T00:00:00" (no Z) reads as the browser's LOCAL midnight,
+  // but toISOString() always outputs UTC -- round-tripping through both silently shifts the
+  // date backward a day for any timezone ahead of UTC (e.g. Asia/Manila, UTC+8).
+  function todayManila() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
+
   function daysBetween(a, b) {
-    return Math.round((new Date(b) - new Date(a)) / (24 * 60 * 60 * 1000));
+    return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / (24 * 60 * 60 * 1000));
   }
 
   function addDays(dateStr, n) {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + n);
+    const d = new Date(dateStr + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Fixed weekly schedule (every Tuesday), not "last injection + 7 days" -- so it doesn't
+  // drift if an injection happens a day or two early/late.
+  function nextTuesdayOnOrAfter(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    const day = d.getUTCDay(); // 0=Sun .. 6=Sat, Tuesday=2
+    const diff = (2 - day + 7) % 7;
+    d.setUTCDate(d.getUTCDate() + diff);
     return d.toISOString().slice(0, 10);
   }
 
@@ -472,14 +490,17 @@
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayManila();
     const last = sorted[0].date;
     const ago = daysBetween(last, today);
     document.getElementById('inj-stat-last').textContent = last;
     document.getElementById('inj-stat-ago').innerHTML =
       `<span class="${ago > INJECTION_INTERVAL_DAYS ? 'up' : 'flat'}">${ago} day${ago === 1 ? '' : 's'} ago</span>`;
 
-    const next = addDays(last, INJECTION_INTERVAL_DAYS);
+    // Search from tomorrow if today's already logged, so it rolls to next week instead of
+    // showing "today" again.
+    const searchFrom = last === today ? addDays(today, 1) : today;
+    const next = nextTuesdayOnOrAfter(searchFrom);
     const untilNext = daysBetween(today, next);
     document.getElementById('inj-stat-next').textContent = next;
     document.getElementById('inj-stat-next-sub').innerHTML = untilNext >= 0
