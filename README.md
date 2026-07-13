@@ -1,13 +1,15 @@
 # Weight Tracker
 
 A personal weight-tracking dashboard fed by Apple Health (where OMRON Connect writes its
-readings) via an iOS Shortcuts automation — no manual entry, no app store submission,
-no OMRON developer account needed.
+readings) via an iOS Shortcuts automation — no app store submission, no OMRON developer
+account needed. Also tracks Tirzepatide injection dates, logged manually from the
+**Tirzepatide** tab on the site itself.
 
 **Live site:** https://omron-weight-tracker.vercel.app
 
 ## How it works
 
+**Weight** (automated):
 1. An iOS Shortcuts automation reads your latest weight from Apple Health on a schedule
    and POSTs it to `/api/log-weight` on this site.
 2. That serverless function (`api/log-weight.js`) verifies a shared secret, then commits
@@ -16,6 +18,15 @@ no OMRON developer account needed.
 3. `index.html` fetches `data/weight-history.json` straight from
    `raw.githubusercontent.com` and renders the trend chart + stat tiles, refreshing every
    5 minutes and whenever the tab regains focus.
+
+**Tirzepatide injections** (manual):
+1. On the **Tirzepatide** tab, pick a date and click "Log injection" — the page prompts
+   once for the same `WEBHOOK_SECRET` used by the Shortcuts automation (stored in
+   `localStorage` afterward) and POSTs to `/api/log-injection`.
+2. That function commits the entry into `data/injections.json`, same GitHub-as-database
+   pattern as weight. Entries can be removed from the same tab (`DELETE /api/log-injection`).
+3. The tab shows the last injection date, days since, and the next expected date
+   (assuming a 7-day interval).
 
 ## Why this exists instead of a "real" OMRON integration
 
@@ -32,7 +43,7 @@ which is what this repo implements.
 |---|---|
 | `GH_TOKEN` | GitHub token with contents write access to this repo, used by the serverless function to commit new readings |
 | `GH_REPO` | `monalizabonita/omron-weight-tracker` |
-| `WEBHOOK_SECRET` | Shared secret the Shortcut must send as `Authorization: Bearer <secret>` |
+| `WEBHOOK_SECRET` | Shared secret the Shortcut (and the Tirzepatide tab's manual entry form) must send as `Authorization: Bearer <secret>` |
 
 ## Request format
 
@@ -46,3 +57,15 @@ Content-Type: application/json
 
 `unit` is `"kg"` or `"lb"` (converted to kg for the chart). One entry per `date` —
 logging the same date again overwrites that day's value rather than duplicating it.
+
+```
+POST /api/log-injection
+DELETE /api/log-injection
+Authorization: Bearer <WEBHOOK_SECRET>
+Content-Type: application/json
+
+{ "date": "2026-07-13" }
+```
+
+One entry per `date` for `POST` (logging the same date again overwrites it); `DELETE`
+removes that date's entry.

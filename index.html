@@ -45,6 +45,44 @@
   .page-header { margin-bottom: 28px; }
   .page-header h1 { font-size: 1.5rem; margin: 0 0 4px; }
   .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    background: none; border: none; color: var(--muted); font-size: 0.92rem; font-weight: 500;
+    padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    font-family: inherit;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--series); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .injection-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  .injection-form input[type="date"] {
+    background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; font-size: 0.92rem; color: var(--text); font-family: inherit;
+  }
+  .injection-form button {
+    background: var(--series); color: #fff; border: none; border-radius: 8px;
+    padding: 9px 16px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  }
+  .injection-form button:disabled { opacity: 0.6; cursor: default; }
+  .form-msg { font-size: 0.82rem; margin-top: 8px; min-height: 1.2em; }
+  .form-msg.error { color: #d03b3b; }
+  .form-msg.ok { color: #0ca30c; }
+
+  .injection-list { list-style: none; margin: 0; padding: 0; }
+  .injection-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+  }
+  .injection-list li:last-child { border-bottom: none; }
+  .injection-list .inj-date { font-weight: 500; }
+  .injection-list .inj-ago { color: var(--muted); font-size: 0.82rem; margin-left: 8px; }
+  .injection-list .inj-delete {
+    background: none; border: none; color: var(--faint); cursor: pointer; font-size: 0.8rem;
+    padding: 4px 8px; font-family: inherit;
+  }
+  .injection-list .inj-delete:hover { color: #d03b3b; }
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
   @media (max-width: 700px) { .stat-row { grid-template-columns: 1fr; } }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
@@ -91,49 +129,87 @@
     <p class="subtitle">Fed automatically from Apple Health (OMRON Connect) via an iOS Shortcuts automation.</p>
   </div>
 
-  <div class="stat-row">
-    <div class="card">
-      <p class="stat-label">Latest</p>
-      <p class="stat-value" id="stat-latest">—</p>
-      <p class="stat-delta" id="stat-latest-date"></p>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="weight">Weight</button>
+    <button class="tab-btn" data-tab="tirze">Tirzepatide</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-weight">
+    <div class="stat-row">
+      <div class="card">
+        <p class="stat-label">Latest</p>
+        <p class="stat-value" id="stat-latest">—</p>
+        <p class="stat-delta" id="stat-latest-date"></p>
+      </div>
+      <div class="card">
+        <p class="stat-label">Change vs 7 days ago</p>
+        <p class="stat-value" id="stat-7d">—</p>
+      </div>
+      <div class="card">
+        <p class="stat-label">Change vs 30 days ago</p>
+        <p class="stat-value" id="stat-30d">—</p>
+      </div>
     </div>
-    <div class="card">
-      <p class="stat-label">Change vs 7 days ago</p>
-      <p class="stat-value" id="stat-7d">—</p>
+
+    <div class="card chart-card">
+      <h2>Weight Trend</h2>
+      <div class="chart-wrap" id="chart-wrap">
+        <p class="empty" id="chart-empty">No entries yet — log your first weight to start the trend.</p>
+      </div>
     </div>
-    <div class="card">
-      <p class="stat-label">Change vs 30 days ago</p>
-      <p class="stat-value" id="stat-30d">—</p>
+
+    <div class="stat-row" id="bodyfat-stat-row" style="display:none">
+      <div class="card">
+        <p class="stat-label">Body Fat — Latest</p>
+        <p class="stat-value" id="bf-stat-latest">—</p>
+        <p class="stat-delta" id="bf-stat-latest-date"></p>
+      </div>
+      <div class="card">
+        <p class="stat-label">Change vs 7 days ago</p>
+        <p class="stat-value" id="bf-stat-7d">—</p>
+      </div>
+      <div class="card">
+        <p class="stat-label">Change vs 30 days ago</p>
+        <p class="stat-value" id="bf-stat-30d">—</p>
+      </div>
+    </div>
+
+    <div class="card chart-card" id="bodyfat-chart-card" style="display:none">
+      <h2>Body Fat % Trend</h2>
+      <div class="chart-wrap" id="bf-chart-wrap">
+        <p class="empty" id="bf-chart-empty">Just one entry so far — the trend line appears after your next log.</p>
+      </div>
     </div>
   </div>
 
-  <div class="card chart-card">
-    <h2>Weight Trend</h2>
-    <div class="chart-wrap" id="chart-wrap">
-      <p class="empty" id="chart-empty">No entries yet — log your first weight to start the trend.</p>
+  <div class="tab-panel" id="tab-tirze">
+    <div class="stat-row">
+      <div class="card">
+        <p class="stat-label">Last injection</p>
+        <p class="stat-value" id="inj-stat-last">—</p>
+        <p class="stat-delta" id="inj-stat-ago"></p>
+      </div>
+      <div class="card">
+        <p class="stat-label">Next expected</p>
+        <p class="stat-value" id="inj-stat-next">—</p>
+        <p class="stat-delta" id="inj-stat-next-sub"></p>
+      </div>
     </div>
-  </div>
 
-  <div class="stat-row" id="bodyfat-stat-row" style="display:none">
-    <div class="card">
-      <p class="stat-label">Body Fat — Latest</p>
-      <p class="stat-value" id="bf-stat-latest">—</p>
-      <p class="stat-delta" id="bf-stat-latest-date"></p>
+    <div class="card" style="margin-bottom: 20px;">
+      <h2 style="font-size:1rem; margin:0 0 16px;">Log an Injection</h2>
+      <div class="injection-form">
+        <input type="date" id="inj-date-input">
+        <button id="inj-log-btn">Log injection</button>
+      </div>
+      <p class="form-msg" id="inj-form-msg"></p>
     </div>
-    <div class="card">
-      <p class="stat-label">Change vs 7 days ago</p>
-      <p class="stat-value" id="bf-stat-7d">—</p>
-    </div>
-    <div class="card">
-      <p class="stat-label">Change vs 30 days ago</p>
-      <p class="stat-value" id="bf-stat-30d">—</p>
-    </div>
-  </div>
 
-  <div class="card chart-card" id="bodyfat-chart-card" style="display:none">
-    <h2>Body Fat % Trend</h2>
-    <div class="chart-wrap" id="bf-chart-wrap">
-      <p class="empty" id="bf-chart-empty">Just one entry so far — the trend line appears after your next log.</p>
+    <div class="card">
+      <h2 style="font-size:1rem; margin:0 0 16px;">History</h2>
+      <ul class="injection-list" id="inj-list">
+        <li class="empty">No injections logged yet.</li>
+      </ul>
     </div>
   </div>
 
@@ -347,6 +423,151 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(rerenderFromCache, 150);
   });
+
+  // ---- Tabs ----
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'tirze') loadInjections();
+    });
+  });
+
+  // ---- Tirzepatide injection tracking ----
+  const INJECTIONS_API = '/api/injections';
+  const LOG_INJECTION_API = '/api/log-injection';
+  const INJECTION_INTERVAL_DAYS = 7; // weekly injection
+
+  function getSecret() {
+    let secret = localStorage.getItem('webhook_secret');
+    if (!secret) {
+      secret = window.prompt('Enter your log secret (same one used by the Shortcuts automation):');
+      if (secret) localStorage.setItem('webhook_secret', secret.trim());
+    }
+    return secret ? secret.trim() : null;
+  }
+
+  function daysBetween(a, b) {
+    return Math.round((new Date(b) - new Date(a)) / (24 * 60 * 60 * 1000));
+  }
+
+  function addDays(dateStr, n) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function loadInjections() {
+    fetch(INJECTIONS_API + '?_=' + Date.now())
+      .then(r => r.json())
+      .then(renderInjections)
+      .catch(() => {
+        document.getElementById('inj-list').innerHTML = '<li class="empty">Unable to load injection history right now.</li>';
+      });
+  }
+
+  function renderInjections(entries) {
+    const sorted = (Array.isArray(entries) ? entries : []).slice().sort((a, b) => b.date.localeCompare(a.date));
+    const listEl = document.getElementById('inj-list');
+
+    if (sorted.length === 0) {
+      listEl.innerHTML = '<li class="empty">No injections logged yet.</li>';
+      document.getElementById('inj-stat-last').textContent = '—';
+      document.getElementById('inj-stat-ago').textContent = '';
+      document.getElementById('inj-stat-next').textContent = '—';
+      document.getElementById('inj-stat-next-sub').textContent = '';
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const last = sorted[0].date;
+    const ago = daysBetween(last, today);
+    document.getElementById('inj-stat-last').textContent = last;
+    document.getElementById('inj-stat-ago').innerHTML =
+      `<span class="${ago > INJECTION_INTERVAL_DAYS ? 'up' : 'flat'}">${ago} day${ago === 1 ? '' : 's'} ago</span>`;
+
+    const next = addDays(last, INJECTION_INTERVAL_DAYS);
+    const untilNext = daysBetween(today, next);
+    document.getElementById('inj-stat-next').textContent = next;
+    document.getElementById('inj-stat-next-sub').innerHTML = untilNext >= 0
+      ? `<span class="flat">in ${untilNext} day${untilNext === 1 ? '' : 's'}</span>`
+      : `<span class="up">${Math.abs(untilNext)} day${Math.abs(untilNext) === 1 ? '' : 's'} overdue</span>`;
+
+    listEl.innerHTML = sorted.map(e => {
+      const daysAgo = daysBetween(e.date, today);
+      return `
+        <li>
+          <span><span class="inj-date">${e.date}</span><span class="inj-ago">${daysAgo === 0 ? 'today' : daysAgo + 'd ago'}</span></span>
+          <button class="inj-delete" data-date="${e.date}">Remove</button>
+        </li>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.inj-delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteInjection(btn.dataset.date));
+    });
+  }
+
+  function setFormMsg(text, cls) {
+    const el = document.getElementById('inj-form-msg');
+    el.textContent = text;
+    el.className = 'form-msg' + (cls ? ' ' + cls : '');
+  }
+
+  document.getElementById('inj-log-btn').addEventListener('click', () => {
+    const dateInput = document.getElementById('inj-date-input');
+    const date = dateInput.value;
+    if (!date) {
+      setFormMsg('Pick a date first.', 'error');
+      return;
+    }
+    const secret = getSecret();
+    if (!secret) {
+      setFormMsg('Secret required to log an entry.', 'error');
+      return;
+    }
+    const btn = document.getElementById('inj-log-btn');
+    btn.disabled = true;
+    setFormMsg('Saving…');
+    fetch(LOG_INJECTION_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + secret },
+      body: JSON.stringify({ date }),
+    })
+      .then(r => {
+        if (r.status === 401) {
+          localStorage.removeItem('webhook_secret');
+          throw new Error('Wrong secret — try again.');
+        }
+        if (!r.ok) throw new Error('Failed to save.');
+        setFormMsg('Logged ' + date + '.', 'ok');
+        dateInput.value = '';
+        setTimeout(loadInjections, 1200); // small delay so the GitHub commit lands before refetching
+      })
+      .catch(err => setFormMsg(err.message, 'error'))
+      .finally(() => { btn.disabled = false; });
+  });
+
+  function deleteInjection(date) {
+    const secret = getSecret();
+    if (!secret) return;
+    fetch(LOG_INJECTION_API, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + secret },
+      body: JSON.stringify({ date }),
+    })
+      .then(r => {
+        if (r.status === 401) {
+          localStorage.removeItem('webhook_secret');
+          throw new Error('Wrong secret.');
+        }
+        if (!r.ok) throw new Error('Failed to remove.');
+        loadInjections();
+      })
+      .catch(err => setFormMsg(err.message, 'error'));
+  }
 </script>
 </body>
 </html>
