@@ -58,12 +58,6 @@ async function saveToGithub(date) {
 
 export default async function handler(req, res) {
   if (req.method === 'DELETE') {
-    const auth = (req.headers['authorization'] || '').trim().toLowerCase();
-    const expected = `bearer ${(process.env.WEBHOOK_SECRET || '').trim()}`.toLowerCase();
-    if (!auth || auth !== expected) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
     const date = typeof req.body?.date === 'string' ? req.body.date.trim() : '';
     if (!date) {
       res.status(400).json({ error: 'Body must include "date"' });
@@ -76,13 +70,6 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  const auth = (req.headers['authorization'] || '').trim().toLowerCase();
-  const expected = `bearer ${(process.env.WEBHOOK_SECRET || '').trim()}`.toLowerCase();
-  if (!auth || auth !== expected) {
-    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 

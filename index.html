@@ -440,15 +440,6 @@
   const LOG_INJECTION_API = '/api/log-injection';
   const INJECTION_INTERVAL_DAYS = 7; // weekly injection
 
-  function getSecret() {
-    let secret = localStorage.getItem('webhook_secret');
-    if (!secret) {
-      secret = window.prompt('Enter your log secret (same one used by the Shortcuts automation):');
-      if (secret) localStorage.setItem('webhook_secret', secret.trim());
-    }
-    return secret ? secret.trim() : null;
-  }
-
   function daysBetween(a, b) {
     return Math.round((new Date(b) - new Date(a)) / (24 * 60 * 60 * 1000));
   }
@@ -523,24 +514,15 @@
       setFormMsg('Pick a date first.', 'error');
       return;
     }
-    const secret = getSecret();
-    if (!secret) {
-      setFormMsg('Secret required to log an entry.', 'error');
-      return;
-    }
     const btn = document.getElementById('inj-log-btn');
     btn.disabled = true;
     setFormMsg('Saving…');
     fetch(LOG_INJECTION_API, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + secret },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date }),
     })
       .then(r => {
-        if (r.status === 401) {
-          localStorage.removeItem('webhook_secret');
-          throw new Error('Wrong secret — try again.');
-        }
         if (!r.ok) throw new Error('Failed to save.');
         setFormMsg('Logged ' + date + '.', 'ok');
         dateInput.value = '';
@@ -551,18 +533,12 @@
   });
 
   function deleteInjection(date) {
-    const secret = getSecret();
-    if (!secret) return;
     fetch(LOG_INJECTION_API, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + secret },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date }),
     })
       .then(r => {
-        if (r.status === 401) {
-          localStorage.removeItem('webhook_secret');
-          throw new Error('Wrong secret.');
-        }
         if (!r.ok) throw new Error('Failed to remove.');
         loadInjections();
       })

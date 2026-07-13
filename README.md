@@ -20,9 +20,10 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
    5 minutes and whenever the tab regains focus.
 
 **Tirzepatide injections** (manual):
-1. On the **Tirzepatide** tab, pick a date and click "Log injection" — the page prompts
-   once for the same `WEBHOOK_SECRET` used by the Shortcuts automation (stored in
-   `localStorage` afterward) and POSTs to `/api/log-injection`.
+1. On the **Tirzepatide** tab, pick a date and click "Log injection" — POSTs straight to
+   `/api/log-injection`, no auth (this endpoint is intentionally open, unlike
+   `/api/log-weight` — it's a personal single-user tracker with no Basic Auth on the
+   site at all, so gating just this one write path added friction without real security).
 2. That function commits the entry into `data/injections.json`, same GitHub-as-database
    pattern as weight. Entries can be removed from the same tab (`DELETE /api/log-injection`).
 3. The tab shows the last injection date, days since, and the next expected date
@@ -43,7 +44,7 @@ which is what this repo implements.
 |---|---|
 | `GH_TOKEN` | GitHub token with contents write access to this repo, used by the serverless function to commit new readings |
 | `GH_REPO` | `monalizabonita/omron-weight-tracker` |
-| `WEBHOOK_SECRET` | Shared secret the Shortcut (and the Tirzepatide tab's manual entry form) must send as `Authorization: Bearer <secret>` |
+| `WEBHOOK_SECRET` | Shared secret the Shortcut must send as `Authorization: Bearer <secret>` (not required by the Tirzepatide tab's manual entry — that endpoint is unauthenticated) |
 
 ## Request format
 
@@ -61,7 +62,6 @@ logging the same date again overwrites that day's value rather than duplicating 
 ```
 POST /api/log-injection
 DELETE /api/log-injection
-Authorization: Bearer <WEBHOOK_SECRET>
 Content-Type: application/json
 
 { "date": "2026-07-13" }
