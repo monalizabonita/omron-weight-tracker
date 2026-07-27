@@ -27,7 +27,7 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
 2. That function commits the entry into `data/injections.json`, same GitHub-as-database
    pattern as weight. Entries can be removed from the same tab (`DELETE /api/log-injection`).
 3. The tab shows the last injection date, days since, and the next expected date
-   (assuming a 7-day interval).
+   on the fixed every-Monday schedule.
 
 ## Why this exists instead of a "real" OMRON integration
 

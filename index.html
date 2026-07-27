@@ -266,7 +266,7 @@
         <p class="stat-delta" id="inj-stat-ago"></p>
       </div>
       <div class="card">
-        <p class="stat-label">Next expected</p>
+        <p class="stat-label">Next Monday injection</p>
         <p class="stat-value" id="inj-stat-next">—</p>
         <p class="stat-delta" id="inj-stat-next-sub"></p>
       </div>
@@ -579,12 +579,12 @@
     return daysBetween(startDate, endDate) / 30.44;
   }
 
-  // Fixed weekly schedule (every Tuesday), not "last injection + 7 days" -- so it doesn't
+  // Fixed weekly schedule (every Monday), not "last injection + 7 days" -- so it doesn't
   // drift if an injection happens a day or two early/late.
-  function nextTuesdayOnOrAfter(dateStr) {
+  function nextMondayOnOrAfter(dateStr) {
     const d = new Date(dateStr + 'T00:00:00Z');
-    const day = d.getUTCDay(); // 0=Sun .. 6=Sat, Tuesday=2
-    const diff = (2 - day + 7) % 7;
+    const day = d.getUTCDay(); // 0=Sun .. 6=Sat, Monday=1
+    const diff = (1 - day + 7) % 7;
     d.setUTCDate(d.getUTCDate() + diff);
     return d.toISOString().slice(0, 10);
   }
@@ -631,7 +631,7 @@
     // Search from tomorrow if today's already logged, so it rolls to next week instead of
     // showing "today" again.
     const searchFrom = last === today ? addDays(today, 1) : today;
-    const next = nextTuesdayOnOrAfter(searchFrom);
+    const next = nextMondayOnOrAfter(searchFrom);
     const untilNext = daysBetween(today, next);
     document.getElementById('inj-stat-next').textContent = next;
     document.getElementById('inj-stat-next-sub').innerHTML = untilNext >= 0
