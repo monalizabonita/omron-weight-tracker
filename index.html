@@ -6,53 +6,90 @@
 <title>Weight Tracker</title>
 <style>
   :root {
-    --bg: #f5f6f8;
-    --page: #f9f9f7;
+    --bg: #eef5f3;
+    --page: #eef5f3;
     --card: #ffffff;
-    --text: #1a1d23;
-    --muted: #5b6270;
-    --faint: #898781;
-    --border: #e2e5ea;
-    --gridline: #e1e0d9;
-    --series: #2a78d6;
-    --series-wash: rgba(42, 120, 214, 0.08);
-    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 1px 8px rgba(11,11,11,0.04);
+    --card-soft: #f6faf8;
+    --text: #14231f;
+    --muted: #5e716b;
+    --faint: #84958f;
+    --border: #dde9e5;
+    --gridline: #e1ebe7;
+    --series: #147f70;
+    --series-2: #6f5bd3;
+    --series-wash: rgba(20, 127, 112, 0.1);
+    --shadow: 0 12px 34px rgba(20,55,45,.07);
+    color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #101216;
-      --page: #0d0d0d;
-      --card: #1a1d23;
-      --text: #edeef0;
-      --muted: #9aa1ad;
-      --faint: #7c8290;
-      --border: #2b2f37;
-      --gridline: #2c2c2a;
-      --series: #3987e5;
-      --series-wash: rgba(57, 135, 229, 0.12);
-      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 8px rgba(0,0,0,0.2);
+      --page: #081512;
+      --card: #10231e;
+      --card-soft: #152d26;
+      --text: #eef8f4;
+      --muted: #aec3bc;
+      --faint: #769087;
+      --border: #254138;
+      --gridline: #29453c;
+      --series: #4bd0b5;
+      --series-2: #ad9cff;
+      --series-wash: rgba(75, 208, 181, 0.12);
+      --shadow: 0 14px 36px rgba(0,0,0,.22);
+      color-scheme: dark;
     }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef5f3; --page: #eef5f3; --card: #fff; --card-soft: #f6faf8;
+    --text: #14231f; --muted: #5e716b; --faint: #84958f; --border: #dde9e5;
+    --gridline: #e1ebe7; --series: #147f70; --series-2: #6f5bd3;
+    --series-wash: rgba(20,127,112,.1); --shadow: 0 12px 34px rgba(20,55,45,.07);
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #081512; --page: #081512; --card: #10231e; --card-soft: #152d26;
+    --text: #eef8f4; --muted: #aec3bc; --faint: #769087; --border: #254138;
+    --gridline: #29453c; --series: #4bd0b5; --series-2: #ad9cff;
+    --series-wash: rgba(75,208,181,.12); --shadow: 0 14px 36px rgba(0,0,0,.22);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    background: var(--page);
+    background:
+      radial-gradient(circle at 90% 5%, rgba(20,127,112,.1), transparent 26rem),
+      radial-gradient(circle at 5% 85%, rgba(111,91,211,.08), transparent 28rem),
+      var(--page);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  .page { max-width: 900px; margin: 0 auto; padding: 40px 24px 56px; }
-  .page-header { margin-bottom: 28px; }
-  .page-header h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 38px 28px 64px; }
+  .page-header {
+    position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    margin-bottom: 24px; padding: 30px 32px; border-radius: 24px; color: #fff;
+    background:
+      radial-gradient(circle at 82% 0, rgba(185,244,136,.2), transparent 28%),
+      linear-gradient(130deg, #113c34, #176d5e);
+    box-shadow: 0 18px 48px rgba(17,60,52,.18);
+  }
+  .page-header::after { content: ""; position: absolute; right: -65px; bottom: -95px; width: 240px; height: 240px; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; box-shadow: 0 0 0 42px rgba(255,255,255,.025); }
+  .page-header-copy { position: relative; z-index: 1; }
+  .header-kicker { margin: 0 0 7px; color: #c8f395; font-size: .67rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+  .page-header h1 { font-size: clamp(1.65rem,4vw,2.25rem); margin: 0 0 6px; letter-spacing: -.04em; }
   .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0; }
+  .page-header .subtitle { max-width: 620px; color: rgba(255,255,255,.7); line-height: 1.55; }
+  .theme-control { position: relative; z-index: 2; display: flex; gap: 3px; padding: 4px; border: 1px solid rgba(255,255,255,.16); border-radius: 11px; background: rgba(0,0,0,.12); }
+  .theme-btn { border: 0; border-radius: 8px; padding: 7px 10px; background: transparent; color: rgba(255,255,255,.68); cursor: pointer; font-size: .7rem; font-weight: 700; }
+  .theme-btn.active { background: rgba(255,255,255,.16); color: #fff; }
 
-  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 4px; width: max-content; margin-bottom: 24px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 5px 18px rgba(20,55,45,.04); }
   .tab-btn {
     background: none; border: none; color: var(--muted); font-size: 0.92rem; font-weight: 500;
-    padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    padding: 9px 16px; cursor: pointer; border-radius: 9px;
     font-family: inherit;
   }
-  .tab-btn.active { color: var(--text); border-bottom-color: var(--series); }
+  .tab-btn.active { background: var(--series); color: #fff; box-shadow: 0 4px 12px rgba(20,127,112,.2); }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
@@ -85,21 +122,31 @@
   .injection-list .inj-delete:hover { color: #d03b3b; }
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
   @media (max-width: 700px) { .stat-row { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); }
-  .stat-label { color: var(--muted); font-size: 0.82rem; margin: 0 0 6px; }
-  .stat-value { font-size: 1.9rem; font-weight: 600; margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 23px; box-shadow: var(--shadow); }
+  .stat-row > .card { position: relative; overflow: hidden; min-height: 145px; }
+  .stat-row > .card::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: var(--series); }
+  .stat-row > .card:nth-child(2)::before { background: var(--series-2); }
+  .stat-row > .card:nth-child(3)::before { background: #e0a329; }
+  .stat-row > .card:nth-child(4)::before { background: #df6d90; }
+  .stat-label { color: var(--muted); font-size: 0.7rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 10px; }
+  .stat-value { font-size: 2rem; font-weight: 700; letter-spacing: -.045em; margin: 0; }
   .stat-unit { font-size: 1rem; font-weight: 400; color: var(--muted); }
   .stat-delta { font-size: 0.86rem; margin-top: 6px; }
   .stat-delta.up { color: #d03b3b; }
   .stat-delta.down { color: #0ca30c; }
   .stat-delta.flat { color: var(--muted); }
   .chart-card { margin-bottom: 20px; }
-  .chart-card h2 { font-size: 1rem; margin: 0 0 16px; }
+  .chart-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .chart-card h2 { font-size: 1rem; margin: 0 0 4px; }
+  .chart-caption { color: var(--muted); font-size: .75rem; }
+  .range-control { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--card-soft); }
+  .range-btn { border: 0; border-radius: 6px; padding: 5px 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: .68rem; font-weight: 700; }
+  .range-btn.active { background: var(--card); color: var(--series); box-shadow: 0 2px 7px rgba(20,55,45,.08); }
   .chart-wrap { position: relative; }
   svg { width: 100%; height: 260px; display: block; overflow: visible; }
   .gridline { stroke: var(--gridline); stroke-width: 1; }
   .axis-label { fill: var(--faint); font-size: 11px; }
-  .line-path { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .line-path { fill: none; stroke: var(--series); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 3px 4px var(--series-wash)); }
   .area-path { fill: var(--series-wash); }
   .end-dot { fill: var(--series); stroke: var(--card); stroke-width: 2; }
   .crosshair { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 3 3; }
@@ -111,7 +158,7 @@
     color: var(--card);
     font-size: 0.78rem;
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 9px; box-shadow: 0 8px 22px rgba(0,0,0,.18);
     line-height: 1.4;
     z-index: 10;
     display: none;
@@ -120,13 +167,35 @@
   .empty { color: var(--muted); font-size: 0.92rem; }
   .setup-note { color: var(--faint); font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
   footer { color: var(--faint); font-size: 0.78rem; margin-top: 24px; line-height: 1.6; }
+  button:focus-visible, input:focus-visible { outline: 3px solid rgba(111,91,211,.22); outline-offset: 2px; }
+  @media (max-width: 700px) {
+    .page { padding: 20px 15px 42px; }
+    .page-header { align-items: flex-start; flex-direction: column; padding: 25px 22px; }
+    .theme-control { align-self: stretch; }
+    .theme-btn { flex: 1; }
+    .tabs { width: 100%; }
+    .tab-btn { flex: 1; }
+    .chart-heading { align-items: stretch; flex-direction: column; }
+    .range-control { width: max-content; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
 </style>
 </head>
 <body>
 <div class="page">
   <div class="page-header">
-    <h1>Weight Tracker</h1>
-    <p class="subtitle">Fed automatically from Apple Health (OMRON Connect) via an iOS Shortcuts automation.</p>
+    <div class="page-header-copy">
+      <p class="header-kicker">Personal health dashboard</p>
+      <h1>Weight Tracker</h1>
+      <p class="subtitle">A calm, private view of your OMRON weight, body composition, and treatment routine.</p>
+    </div>
+    <div class="theme-control" aria-label="Theme">
+      <button class="theme-btn" data-theme-choice="auto">Auto</button>
+      <button class="theme-btn" data-theme-choice="light">Light</button>
+      <button class="theme-btn" data-theme-choice="dark">Dark</button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -152,7 +221,14 @@
     </div>
 
     <div class="card chart-card">
-      <h2>Weight Trend</h2>
+      <div class="chart-heading">
+        <div><h2>Weight Trend</h2><span class="chart-caption" id="weight-chart-caption">All recorded measurements</span></div>
+        <div class="range-control" aria-label="Weight chart timeframe">
+          <button class="range-btn" data-range="30">30D</button>
+          <button class="range-btn" data-range="90">90D</button>
+          <button class="range-btn active" data-range="all">All</button>
+        </div>
+      </div>
       <div class="chart-wrap" id="chart-wrap">
         <p class="empty" id="chart-empty">No entries yet — log your first weight to start the trend.</p>
       </div>
@@ -175,7 +251,7 @@
     </div>
 
     <div class="card chart-card" id="bodyfat-chart-card" style="display:none">
-      <h2>Body Fat % Trend</h2>
+      <div class="chart-heading"><div><h2>Body Fat % Trend</h2><span class="chart-caption">Body composition from OMRON Connect</span></div></div>
       <div class="chart-wrap" id="bf-chart-wrap">
         <p class="empty" id="bf-chart-empty">Just one entry so far — the trend line appears after your next log.</p>
       </div>
@@ -193,6 +269,11 @@
         <p class="stat-label">Next expected</p>
         <p class="stat-value" id="inj-stat-next">—</p>
         <p class="stat-delta" id="inj-stat-next-sub"></p>
+      </div>
+      <div class="card">
+        <p class="stat-label">On tirzepatide for</p>
+        <p class="stat-value" id="inj-stat-duration">—</p>
+        <p class="stat-delta" id="inj-stat-duration-sub"></p>
       </div>
     </div>
 
@@ -223,6 +304,7 @@
 <script>
   const HISTORY_API = '/api/history';
   const REFRESH_MS = 5 * 60 * 1000;
+  let activeRange = 'all';
 
   function toKg(entry) {
     return entry.unit === 'lb' ? entry.weight * 0.453592 : entry.weight;
@@ -306,14 +388,22 @@
     renderDeltaBlock(cfg.stat7dId, latest.value, past7 ? past7.value : null, unitLabel);
     renderDeltaBlock(cfg.stat30dId, latest.value, past30 ? past30.value : null, unitLabel);
 
+    const chartSeries = filterSeriesForRange(series);
     const emptyEl = document.getElementById(cfg.chartEmptyId);
-    if (series.length < 2) {
+    if (chartSeries.length < 2) {
       emptyEl.style.display = '';
-      emptyEl.textContent = 'Just one entry so far — the trend line appears after your next log.';
+      emptyEl.textContent = 'Not enough measurements in this timeframe yet.';
       return;
     }
     emptyEl.style.display = 'none';
-    drawChart(cfg.chartWrapId, cfg.chartInstanceId, series, unitLabel);
+    drawChart(cfg.chartWrapId, cfg.chartInstanceId, chartSeries, unitLabel);
+  }
+
+  function filterSeriesForRange(series) {
+    if (activeRange === 'all' || !series.length) return series;
+    const latest = new Date(series[series.length - 1].date + 'T00:00:00Z').getTime();
+    const cutoff = latest - Number(activeRange) * 24 * 60 * 60 * 1000;
+    return series.filter(item => new Date(item.date + 'T00:00:00Z').getTime() >= cutoff);
   }
 
   function findClosestOnOrBefore(series, targetMs) {
@@ -368,6 +458,12 @@
       const gyPos = y(gy).toFixed(1);
       svg += `<line class="gridline" x1="${padL}" y1="${gyPos}" x2="${width - padR}" y2="${gyPos}" />`;
       svg += `<text class="axis-label" x="4" y="${(parseFloat(gyPos) + 4).toFixed(1)}">${gy.toFixed(1)}</text>`;
+    });
+    const datePoints = [points[0], points[Math.floor((points.length - 1) / 2)], points[points.length - 1]];
+    datePoints.forEach((point, index) => {
+      const anchor = index === 0 ? 'start' : index === 2 ? 'end' : 'middle';
+      const label = new Date(point.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      svg += `<text class="axis-label" text-anchor="${anchor}" x="${point.x.toFixed(1)}" y="${height - 7}">${label}</text>`;
     });
     svg += `<path class="area-path" d="${areaPath}" />`;
     svg += `<path class="line-path" d="${linePath}" />`;
@@ -424,6 +520,25 @@
     resizeTimer = setTimeout(rerenderFromCache, 150);
   });
 
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeRange = btn.dataset.range;
+      document.querySelectorAll('.range-btn').forEach(item => item.classList.toggle('active', item === btn));
+      const caption = document.getElementById('weight-chart-caption');
+      caption.textContent = activeRange === 'all' ? 'All recorded measurements' : `Latest ${activeRange} days`;
+      rerenderFromCache();
+    });
+  });
+
+  function applyTheme(theme) {
+    if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
+    else document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('weight-tracker-theme', theme);
+    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.themeChoice === theme));
+  }
+  document.querySelectorAll('.theme-btn').forEach(btn => btn.addEventListener('click', () => applyTheme(btn.dataset.themeChoice)));
+  applyTheme(localStorage.getItem('weight-tracker-theme') || 'auto');
+
   // ---- Tabs ----
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -458,6 +573,12 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // Average month length (365.25/12), not "days/30" -- keeps the figure stable across months
+  // of different lengths instead of jumping around a fixed 30-day divisor.
+  function monthsBetween(startDate, endDate) {
+    return daysBetween(startDate, endDate) / 30.44;
+  }
+
   // Fixed weekly schedule (every Tuesday), not "last injection + 7 days" -- so it doesn't
   // drift if an injection happens a day or two early/late.
   function nextTuesdayOnOrAfter(dateStr) {
@@ -487,6 +608,8 @@
       document.getElementById('inj-stat-ago').textContent = '';
       document.getElementById('inj-stat-next').textContent = '—';
       document.getElementById('inj-stat-next-sub').textContent = '';
+      document.getElementById('inj-stat-duration').textContent = '—';
+      document.getElementById('inj-stat-duration-sub').textContent = '';
       return;
     }
 
@@ -496,6 +619,14 @@
     document.getElementById('inj-stat-last').textContent = last;
     document.getElementById('inj-stat-ago').innerHTML =
       `<span class="${ago > INJECTION_INTERVAL_DAYS ? 'up' : 'flat'}">${ago} day${ago === 1 ? '' : 's'} ago</span>`;
+
+    const first = sorted[sorted.length - 1].date;
+    const totalMonths = monthsBetween(first, today);
+    const totalWeeks = Math.floor(daysBetween(first, today) / 7);
+    document.getElementById('inj-stat-duration').textContent =
+      `${totalMonths.toFixed(1)} mo${totalMonths === 1 ? '' : 's'}`;
+    document.getElementById('inj-stat-duration-sub').innerHTML =
+      `<span class="flat">since ${first} · ${sorted.length} dose${sorted.length === 1 ? '' : 's'} logged</span>`;
 
     // Search from tomorrow if today's already logged, so it rolls to next week instead of
     // showing "today" again.
