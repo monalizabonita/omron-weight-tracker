@@ -236,5 +236,12 @@
     "unit": "kg",
     "body_fat_percent": 34,
     "logged_at": "2026-08-25T08:04:27.605Z"
+  },
+  {
+    "date": "2026-08-27",
+    "weight": 58.20000076293945,
+    "unit": "kg",
+    "body_fat_percent": 34,
+    "logged_at": "2026-08-27T05:00:05.031Z"
   }
 ]
