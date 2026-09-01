@@ -2,10 +2,26 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  configuredSecret,
   decryptRecord,
   encryptRecord,
   validateVaccination,
 } from '../lib/vaccination-store.js';
+
+test('dedicated vaccination secret does not replace the weight webhook secret', () => {
+  const previousVaccination = process.env.VACCINATION_SECRET;
+  const previousWebhook = process.env.WEBHOOK_SECRET;
+  process.env.VACCINATION_SECRET = 'vaccination-only-test-secret';
+  process.env.WEBHOOK_SECRET = 'weight-only-test-secret';
+  try {
+    assert.equal(configuredSecret(), 'vaccination-only-test-secret');
+  } finally {
+    if (previousVaccination === undefined) delete process.env.VACCINATION_SECRET;
+    else process.env.VACCINATION_SECRET = previousVaccination;
+    if (previousWebhook === undefined) delete process.env.WEBHOOK_SECRET;
+    else process.env.WEBHOOK_SECRET = previousWebhook;
+  }
+});
 
 test('vaccination records round-trip through authenticated encryption', () => {
   const record = {

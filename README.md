@@ -30,8 +30,8 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
    on the fixed every-Monday schedule.
 
 **Vaccination records** (manual and encrypted):
-1. Open the **Vaccination Records** tab and unlock it with the same private access code used by
-   the Apple Health Shortcut (`WEBHOOK_SECRET`).
+1. Open the **Vaccination Records** tab and unlock it with the private vaccination access code
+   (`VACCINATION_SECRET`).
 2. Add the vaccine, administration date, and optional dose, provider, lot number, next due date,
    and notes. Records can also be removed from the tab.
 3. The API encrypts each complete record with AES-256-GCM before committing it to
@@ -54,9 +54,11 @@ which is what this repo implements.
 | `GH_TOKEN` | GitHub token with contents write access to this repo, used by the serverless function to commit new readings |
 | `GH_REPO` | `monalizabonita/omron-weight-tracker` |
 | `WEBHOOK_SECRET` | Shared secret the Shortcut must send as `Authorization: Bearer <secret>` (not required by the Tirzepatide tab's manual entry — that endpoint is unauthenticated) |
+| `VACCINATION_SECRET` | Separate access code for reading and changing encrypted vaccination records |
 
-`WEBHOOK_SECRET` also unlocks the encrypted Vaccination Records tab. The browser can remember it
-on the current device; choosing **Lock** removes the saved copy from browser storage.
+The browser can remember `VACCINATION_SECRET` on the current device; choosing **Lock** removes the
+saved copy from browser storage. If the dedicated secret is not configured, the API falls back to
+`WEBHOOK_SECRET` for backward compatibility.
 
 ## Request format
 
