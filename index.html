@@ -150,6 +150,8 @@
   .vaccination-item h3 { margin: 0 0 5px; font-size: .98rem; }
   .vaccination-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
   .vaccination-notes { margin: 9px 0 0; color: var(--text); font-size: .84rem; line-height: 1.55; white-space: pre-wrap; }
+  .vaccination-actions { display: flex; align-items: flex-start; gap: 4px; flex: 0 0 auto; }
+  .edit-btn { align-self: start; border: 0; background: transparent; color: var(--series); padding: 5px 6px; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; }
   .danger-btn { align-self: start; border: 0; background: transparent; color: var(--faint); padding: 5px 6px; cursor: pointer; font: inherit; font-size: .78rem; }
   .danger-btn:hover { color: #d03b3b; }
   .privacy-note { margin: 11px 0 0; color: var(--faint); font-size: .76rem; line-height: 1.55; }
@@ -373,9 +375,9 @@
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:20px">
+      <div class="card" id="vax-editor-card" style="margin-bottom:20px">
         <div class="section-heading-row">
-          <div><h2>Add vaccination record</h2><p class="subtitle">Enter a past vaccination manually. Only vaccine and date are required.</p></div>
+          <div><h2 id="vax-form-title">Add vaccination record</h2><p class="subtitle" id="vax-form-subtitle">Enter a past vaccination manually. Only vaccine and date are required.</p></div>
           <button class="secondary-btn" id="vax-lock-btn" type="button">Lock</button>
         </div>
         <form class="health-form" id="vax-form">
@@ -409,6 +411,7 @@
           </div>
           <div class="form-actions">
             <button class="primary-btn" id="vax-save-btn" type="submit">Add record</button>
+            <button class="secondary-btn" id="vax-cancel-edit-btn" type="button" hidden>Cancel edit</button>
             <p class="form-msg" id="vax-form-msg" role="status" aria-live="polite"></p>
           </div>
         </form>
@@ -832,6 +835,7 @@
   let vaccinationAccessCode = '';
   let vaccinationRecords = [];
   let vaccinationsInitialized = false;
+  let editingVaccinationId = '';
 
   function setVaxMessage(id, text, cls) {
     const el = document.getElementById(id);
@@ -970,13 +974,22 @@
         notes.textContent = record.notes;
         details.appendChild(notes);
       }
+      const actions = document.createElement('div');
+      actions.className = 'vaccination-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'edit-btn';
+      edit.textContent = 'Edit';
+      edit.setAttribute('aria-label', `Edit ${record.vaccine} record from ${record.date}`);
+      edit.addEventListener('click', () => startEditingVaccination(record));
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'danger-btn';
       remove.textContent = 'Remove';
       remove.setAttribute('aria-label', `Remove ${record.vaccine} record from ${record.date}`);
       remove.addEventListener('click', () => deleteVaccination(record));
-      item.append(details, remove);
+      actions.append(edit, remove);
+      item.append(details, actions);
       list.appendChild(item);
     });
   }
@@ -1007,6 +1020,7 @@
   });
 
   document.getElementById('vax-lock-btn').addEventListener('click', () => {
+    resetVaccinationForm();
     vaccinationAccessCode = '';
     vaccinationRecords = [];
     localStorage.removeItem(VAX_ACCESS_KEY);
@@ -1019,17 +1033,18 @@
     const form = event.currentTarget;
     const button = document.getElementById('vax-save-btn');
     const payload = Object.fromEntries(new FormData(form).entries());
+    const isEditing = Boolean(editingVaccinationId);
+    if (isEditing) payload.id = editingVaccinationId;
     button.disabled = true;
-    setVaxMessage('vax-form-msg', 'Encrypting and saving…');
+    setVaxMessage('vax-form-msg', isEditing ? 'Encrypting and updating…' : 'Encrypting and saving…');
     try {
       await vaccinationRequest(LOG_VACCINATION_API, {
-        method: 'POST',
+        method: isEditing ? 'PATCH' : 'POST',
         body: JSON.stringify(payload),
       });
-      form.reset();
-      document.getElementById('vax-date').value = todayManila();
-      setVaxMessage('vax-form-msg', 'Vaccination record added.', 'ok');
+      resetVaccinationForm();
       await loadVaccinations();
+      setVaxMessage('vax-form-msg', isEditing ? 'Vaccination record updated.' : 'Vaccination record added.', 'ok');
     } catch (error) {
       if (error.status === 401) showVaccinationLock('Your access expired. Unlock the records again.');
       else setVaxMessage('vax-form-msg', error.message, 'error');
@@ -1037,6 +1052,40 @@
       button.disabled = false;
     }
   });
+
+  document.getElementById('vax-cancel-edit-btn').addEventListener('click', () => {
+    resetVaccinationForm();
+    setVaxMessage('vax-form-msg', 'Edit cancelled.');
+  });
+
+  function startEditingVaccination(record) {
+    editingVaccinationId = record.id;
+    document.getElementById('vax-vaccine').value = record.vaccine || '';
+    document.getElementById('vax-dose').value = record.dose || '';
+    document.getElementById('vax-date').value = record.date || '';
+    document.getElementById('vax-next-date').value = record.next_due_date || '';
+    document.getElementById('vax-provider').value = record.provider || '';
+    document.getElementById('vax-lot').value = record.lot_number || '';
+    document.getElementById('vax-notes').value = record.notes || '';
+    document.getElementById('vax-form-title').textContent = 'Edit vaccination record';
+    document.getElementById('vax-form-subtitle').textContent = `Update the ${record.vaccine} record from ${formatHealthDate(record.date)}.`;
+    document.getElementById('vax-save-btn').textContent = 'Save changes';
+    document.getElementById('vax-cancel-edit-btn').hidden = false;
+    setVaxMessage('vax-form-msg', 'Editing selected record.');
+    document.getElementById('vax-editor-card').scrollIntoView({ block: 'start' });
+    document.getElementById('vax-vaccine').focus();
+  }
+
+  function resetVaccinationForm() {
+    editingVaccinationId = '';
+    const form = document.getElementById('vax-form');
+    form.reset();
+    document.getElementById('vax-date').value = todayManila();
+    document.getElementById('vax-form-title').textContent = 'Add vaccination record';
+    document.getElementById('vax-form-subtitle').textContent = 'Enter a past vaccination manually. Only vaccine and date are required.';
+    document.getElementById('vax-save-btn').textContent = 'Add record';
+    document.getElementById('vax-cancel-edit-btn').hidden = true;
+  }
 
   async function deleteVaccination(record) {
     if (!confirm(`Remove the ${record.vaccine} record from ${record.date}?`)) return;
@@ -1046,8 +1095,9 @@
         method: 'DELETE',
         body: JSON.stringify({ id: record.id }),
       });
-      setVaxMessage('vax-form-msg', 'Record removed.', 'ok');
+      if (editingVaccinationId === record.id) resetVaccinationForm();
       await loadVaccinations();
+      setVaxMessage('vax-form-msg', 'Record removed.', 'ok');
     } catch (error) {
       setVaxMessage('vax-form-msg', error.message, 'error');
     }

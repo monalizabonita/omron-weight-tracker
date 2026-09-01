@@ -5,6 +5,7 @@ import {
   configuredSecret,
   decryptRecord,
   encryptRecord,
+  replaceEncryptedRecord,
   validateVaccination,
 } from '../lib/vaccination-store.js';
 
@@ -38,6 +39,38 @@ test('vaccination records round-trip through authenticated encryption', () => {
   assert.deepEqual(decryptRecord(envelope, 'test-only-secret'), record);
   assert.equal(JSON.stringify(envelope).includes('Influenza'), false);
   assert.throws(() => decryptRecord(envelope, 'wrong-secret'));
+});
+
+test('editing preserves identity and creation time while re-encrypting the record', () => {
+  const secret = 'edit-test-secret';
+  const original = {
+    id: '07f1099f-9dda-4f33-bb95-809ace609a6c',
+    vaccine: 'Influenza',
+    dose: 'Dose 1',
+    date: '2026-08-12',
+    provider: '',
+    lot_number: '',
+    next_due_date: '',
+    notes: '',
+    logged_at: '2026-08-13T01:02:03.000Z',
+  };
+  const before = encryptRecord(original, secret);
+  const editedAt = new Date('2026-09-01T06:00:00.000Z');
+  const result = replaceEncryptedRecord([before], original.id, {
+    ...original,
+    vaccine: 'Updated influenza',
+    notes: 'Edited note',
+  }, secret, editedAt);
+
+  assert.ok(result);
+  assert.equal(result.records.length, 1);
+  assert.notEqual(result.records[0].ciphertext, before.ciphertext);
+  assert.equal(JSON.stringify(result.records[0]).includes('Updated influenza'), false);
+  const updated = decryptRecord(result.records[0], secret);
+  assert.equal(updated.id, original.id);
+  assert.equal(updated.logged_at, original.logged_at);
+  assert.equal(updated.updated_at, editedAt.toISOString());
+  assert.equal(updated.notes, 'Edited note');
 });
 
 test('vaccination input is normalized and validated', () => {
