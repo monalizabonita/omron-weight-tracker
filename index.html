@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weight Tracker</title>
+<title>Health Tracker</title>
 <style>
   :root {
     --bg: #eef5f3;
@@ -120,6 +120,40 @@
     padding: 4px 8px; font-family: inherit;
   }
   .injection-list .inj-delete:hover { color: #d03b3b; }
+  .health-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+  .health-field { display: grid; gap: 6px; }
+  .health-field.full { grid-column: 1 / -1; }
+  .health-field label { color: var(--muted); font-size: .76rem; font-weight: 700; }
+  .health-field input, .health-field textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
+    background: var(--page); color: var(--text); font: inherit;
+  }
+  .health-field textarea { min-height: 88px; resize: vertical; }
+  .primary-btn, .secondary-btn {
+    min-height: 40px; border-radius: 9px; padding: 9px 16px; font: inherit; font-size: .86rem;
+    font-weight: 700; cursor: pointer;
+  }
+  .primary-btn { border: 0; background: var(--series); color: #fff; }
+  .secondary-btn { border: 1px solid var(--border); background: var(--card-soft); color: var(--text); }
+  .primary-btn:disabled, .secondary-btn:disabled { opacity: .58; cursor: default; }
+  .form-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; grid-column: 1 / -1; }
+  .access-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; max-width: 620px; }
+  .access-row .health-field { flex: 1 1 260px; }
+  .remember-row { display: flex; align-items: center; gap: 8px; margin-top: 11px; color: var(--muted); font-size: .78rem; }
+  .section-heading-row { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 17px; }
+  .section-heading-row h2 { margin: 0 0 5px; font-size: 1rem; }
+  .vaccination-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .vaccination-item {
+    display: flex; justify-content: space-between; gap: 18px; padding: 16px;
+    border: 1px solid var(--border); border-radius: 13px; background: var(--card-soft);
+  }
+  .vaccination-item h3 { margin: 0 0 5px; font-size: .98rem; }
+  .vaccination-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; color: var(--muted); font-size: .8rem; line-height: 1.5; }
+  .vaccination-notes { margin: 9px 0 0; color: var(--text); font-size: .84rem; line-height: 1.55; white-space: pre-wrap; }
+  .danger-btn { align-self: start; border: 0; background: transparent; color: var(--faint); padding: 5px 6px; cursor: pointer; font: inherit; font-size: .78rem; }
+  .danger-btn:hover { color: #d03b3b; }
+  .privacy-note { margin: 11px 0 0; color: var(--faint); font-size: .76rem; line-height: 1.55; }
+  .vaccination-content[hidden] { display: none; }
   .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
   @media (max-width: 700px) { .stat-row { grid-template-columns: 1fr; } }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 23px; box-shadow: var(--shadow); }
@@ -167,16 +201,19 @@
   .empty { color: var(--muted); font-size: 0.92rem; }
   .setup-note { color: var(--faint); font-size: 0.8rem; margin-top: 16px; line-height: 1.6; }
   footer { color: var(--faint); font-size: 0.78rem; margin-top: 24px; line-height: 1.6; }
-  button:focus-visible, input:focus-visible { outline: 3px solid rgba(111,91,211,.22); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(111,91,211,.22); outline-offset: 2px; }
   @media (max-width: 700px) {
     .page { padding: 20px 15px 42px; }
     .page-header { align-items: flex-start; flex-direction: column; padding: 25px 22px; }
     .theme-control { align-self: stretch; }
     .theme-btn { flex: 1; }
-    .tabs { width: 100%; }
-    .tab-btn { flex: 1; }
+    .tabs { width: 100%; overflow-x: auto; }
+    .tab-btn { flex: 1 0 auto; white-space: nowrap; }
     .chart-heading { align-items: stretch; flex-direction: column; }
     .range-control { width: max-content; }
+    .health-form { grid-template-columns: 1fr; }
+    .health-field.full, .form-actions { grid-column: auto; }
+    .vaccination-item { align-items: flex-start; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -188,8 +225,8 @@
   <div class="page-header">
     <div class="page-header-copy">
       <p class="header-kicker">Personal health dashboard</p>
-      <h1>Weight Tracker</h1>
-      <p class="subtitle">A calm, private view of your OMRON weight, body composition, and treatment routine.</p>
+      <h1>Health Tracker</h1>
+      <p class="subtitle">A calm view of your OMRON weight, body composition, treatment routine, and vaccination history.</p>
     </div>
     <div class="theme-control" aria-label="Theme">
       <button class="theme-btn" data-theme-choice="auto">Auto</button>
@@ -201,6 +238,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="weight">Weight</button>
     <button class="tab-btn" data-tab="tirze">Tirzepatide</button>
+    <button class="tab-btn" data-tab="vaccinations">Vaccination Records</button>
   </div>
 
   <div class="tab-panel active" id="tab-weight">
@@ -291,6 +329,95 @@
       <ul class="injection-list" id="inj-list">
         <li class="empty">No injections logged yet.</li>
       </ul>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-vaccinations">
+    <div class="card" id="vax-lock-card">
+      <div class="section-heading-row">
+        <div>
+          <h2>Private vaccination records</h2>
+          <p class="subtitle">Unlock this tab with the health access code used by your Apple Health Shortcut.</p>
+        </div>
+      </div>
+      <form id="vax-unlock-form">
+        <div class="access-row">
+          <div class="health-field">
+            <label for="vax-access-code">Health access code</label>
+            <input type="password" id="vax-access-code" autocomplete="current-password" required>
+          </div>
+          <button class="primary-btn" id="vax-unlock-btn" type="submit">Unlock records</button>
+        </div>
+        <label class="remember-row"><input type="checkbox" id="vax-remember" checked> Remember on this device</label>
+        <p class="form-msg" id="vax-unlock-msg" role="status" aria-live="polite"></p>
+      </form>
+      <p class="privacy-note">Vaccination details are encrypted before storage and cannot be read from the public repository.</p>
+    </div>
+
+    <div class="vaccination-content" id="vax-content" hidden>
+      <div class="stat-row">
+        <div class="card">
+          <p class="stat-label">Records</p>
+          <p class="stat-value" id="vax-stat-total">0</p>
+          <p class="stat-delta flat">vaccinations logged</p>
+        </div>
+        <div class="card">
+          <p class="stat-label">Latest vaccination</p>
+          <p class="stat-value" id="vax-stat-latest">—</p>
+          <p class="stat-delta" id="vax-stat-latest-sub"></p>
+        </div>
+        <div class="card">
+          <p class="stat-label">Next due</p>
+          <p class="stat-value" id="vax-stat-next">—</p>
+          <p class="stat-delta" id="vax-stat-next-sub"></p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="section-heading-row">
+          <div><h2>Add vaccination record</h2><p class="subtitle">Enter a past vaccination manually. Only vaccine and date are required.</p></div>
+          <button class="secondary-btn" id="vax-lock-btn" type="button">Lock</button>
+        </div>
+        <form class="health-form" id="vax-form">
+          <div class="health-field">
+            <label for="vax-vaccine">Vaccine name *</label>
+            <input id="vax-vaccine" name="vaccine" maxlength="100" placeholder="e.g. Influenza" required>
+          </div>
+          <div class="health-field">
+            <label for="vax-dose">Dose</label>
+            <input id="vax-dose" name="dose" maxlength="60" placeholder="e.g. Dose 2 or booster">
+          </div>
+          <div class="health-field">
+            <label for="vax-date">Date administered *</label>
+            <input type="date" id="vax-date" name="date" required>
+          </div>
+          <div class="health-field">
+            <label for="vax-next-date">Next dose due</label>
+            <input type="date" id="vax-next-date" name="next_due_date">
+          </div>
+          <div class="health-field">
+            <label for="vax-provider">Clinic or provider</label>
+            <input id="vax-provider" name="provider" maxlength="120" placeholder="Optional">
+          </div>
+          <div class="health-field">
+            <label for="vax-lot">Lot number</label>
+            <input id="vax-lot" name="lot_number" maxlength="80" placeholder="Optional">
+          </div>
+          <div class="health-field full">
+            <label for="vax-notes">Notes</label>
+            <textarea id="vax-notes" name="notes" maxlength="500" placeholder="Side effects, reminders, or other details"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="primary-btn" id="vax-save-btn" type="submit">Add record</button>
+            <p class="form-msg" id="vax-form-msg" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="section-heading-row"><div><h2>Vaccination history</h2><p class="subtitle">Newest records appear first.</p></div></div>
+        <ul class="vaccination-list" id="vax-list"><li class="empty">No vaccination records yet.</li></ul>
+      </div>
     </div>
   </div>
 
@@ -547,6 +674,7 @@
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'tirze') loadInjections();
+      if (btn.dataset.tab === 'vaccinations') initializeVaccinations();
     });
   });
 
@@ -695,6 +823,234 @@
         loadInjections();
       })
       .catch(err => setFormMsg(err.message, 'error'));
+  }
+
+  // ---- Encrypted vaccination records ----
+  const VACCINATIONS_API = '/api/vaccinations';
+  const LOG_VACCINATION_API = '/api/log-vaccination';
+  const VAX_ACCESS_KEY = 'health-records-access';
+  let vaccinationAccessCode = '';
+  let vaccinationRecords = [];
+  let vaccinationsInitialized = false;
+
+  function setVaxMessage(id, text, cls) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'form-msg' + (cls ? ' ' + cls : '');
+  }
+
+  function vaccinationHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + vaccinationAccessCode,
+    };
+  }
+
+  async function vaccinationRequest(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: { ...vaccinationHeaders(), ...(options.headers || {}) },
+    });
+    let body = {};
+    try { body = await response.json(); } catch (_) { /* use fallback below */ }
+    if (!response.ok) {
+      const error = new Error(body.error || 'Vaccination records are unavailable right now.');
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  function showVaccinationLock(message = '') {
+    document.getElementById('vax-lock-card').hidden = false;
+    document.getElementById('vax-content').hidden = true;
+    if (message) setVaxMessage('vax-unlock-msg', message, 'error');
+  }
+
+  function showVaccinationContent() {
+    document.getElementById('vax-lock-card').hidden = true;
+    document.getElementById('vax-content').hidden = false;
+  }
+
+  function initializeVaccinations() {
+    const today = todayManila();
+    document.getElementById('vax-date').max = today;
+    if (!document.getElementById('vax-date').value) document.getElementById('vax-date').value = today;
+    if (vaccinationsInitialized) return;
+    vaccinationsInitialized = true;
+    vaccinationAccessCode = localStorage.getItem(VAX_ACCESS_KEY) || '';
+    if (vaccinationAccessCode) {
+      loadVaccinations(true);
+    } else {
+      showVaccinationLock();
+      setTimeout(() => document.getElementById('vax-access-code').focus(), 0);
+    }
+  }
+
+  async function loadVaccinations(autoUnlock = false) {
+    if (!vaccinationAccessCode) {
+      showVaccinationLock();
+      return;
+    }
+    if (!autoUnlock) setVaxMessage('vax-form-msg', 'Refreshing…');
+    try {
+      const records = await vaccinationRequest(VACCINATIONS_API + '?_=' + Date.now());
+      vaccinationRecords = Array.isArray(records) ? records : [];
+      showVaccinationContent();
+      renderVaccinations(vaccinationRecords);
+      setVaxMessage('vax-form-msg', '');
+      setVaxMessage('vax-unlock-msg', '');
+    } catch (error) {
+      if (error.status === 401) {
+        vaccinationAccessCode = '';
+        localStorage.removeItem(VAX_ACCESS_KEY);
+        showVaccinationLock('That access code was not accepted.');
+      } else {
+        showVaccinationLock(error.message);
+      }
+    }
+  }
+
+  function formatHealthDate(date) {
+    return new Date(date + 'T00:00:00Z').toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+    });
+  }
+
+  function renderVaccinations(records) {
+    const sorted = records.slice().sort((a, b) => b.date.localeCompare(a.date));
+    const list = document.getElementById('vax-list');
+    document.getElementById('vax-stat-total').textContent = String(sorted.length);
+
+    const latest = sorted[0];
+    document.getElementById('vax-stat-latest').textContent = latest ? latest.vaccine : '—';
+    document.getElementById('vax-stat-latest-sub').textContent = latest
+      ? `${latest.dose ? latest.dose + ' · ' : ''}${formatHealthDate(latest.date)}`
+      : 'No records yet';
+
+    const today = todayManila();
+    const next = sorted
+      .filter(record => record.next_due_date && record.next_due_date >= today)
+      .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date))[0];
+    document.getElementById('vax-stat-next').textContent = next ? formatHealthDate(next.next_due_date) : '—';
+    document.getElementById('vax-stat-next-sub').textContent = next ? next.vaccine : 'No upcoming dose recorded';
+
+    list.replaceChildren();
+    if (!sorted.length) {
+      const empty = document.createElement('li');
+      empty.className = 'empty';
+      empty.textContent = 'No vaccination records yet. Add your first record above.';
+      list.appendChild(empty);
+      return;
+    }
+
+    sorted.forEach(record => {
+      const item = document.createElement('li');
+      item.className = 'vaccination-item';
+      const details = document.createElement('div');
+      const title = document.createElement('h3');
+      title.textContent = record.vaccine + (record.dose ? ` — ${record.dose}` : '');
+      const meta = document.createElement('div');
+      meta.className = 'vaccination-meta';
+      const values = [
+        `Given ${formatHealthDate(record.date)}`,
+        record.provider ? `Provider: ${record.provider}` : '',
+        record.lot_number ? `Lot: ${record.lot_number}` : '',
+        record.next_due_date ? `Next due: ${formatHealthDate(record.next_due_date)}` : '',
+      ].filter(Boolean);
+      values.forEach(value => {
+        const span = document.createElement('span');
+        span.textContent = value;
+        meta.appendChild(span);
+      });
+      details.append(title, meta);
+      if (record.notes) {
+        const notes = document.createElement('p');
+        notes.className = 'vaccination-notes';
+        notes.textContent = record.notes;
+        details.appendChild(notes);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'danger-btn';
+      remove.textContent = 'Remove';
+      remove.setAttribute('aria-label', `Remove ${record.vaccine} record from ${record.date}`);
+      remove.addEventListener('click', () => deleteVaccination(record));
+      item.append(details, remove);
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById('vax-unlock-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('vax-unlock-btn');
+    const code = document.getElementById('vax-access-code').value.trim();
+    if (!code) return;
+    button.disabled = true;
+    vaccinationAccessCode = code;
+    setVaxMessage('vax-unlock-msg', 'Unlocking…');
+    try {
+      const records = await vaccinationRequest(VACCINATIONS_API + '?_=' + Date.now());
+      if (document.getElementById('vax-remember').checked) localStorage.setItem(VAX_ACCESS_KEY, code);
+      else localStorage.removeItem(VAX_ACCESS_KEY);
+      vaccinationRecords = Array.isArray(records) ? records : [];
+      document.getElementById('vax-access-code').value = '';
+      showVaccinationContent();
+      renderVaccinations(vaccinationRecords);
+      setVaxMessage('vax-unlock-msg', '');
+    } catch (error) {
+      vaccinationAccessCode = '';
+      setVaxMessage('vax-unlock-msg', error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById('vax-lock-btn').addEventListener('click', () => {
+    vaccinationAccessCode = '';
+    vaccinationRecords = [];
+    localStorage.removeItem(VAX_ACCESS_KEY);
+    showVaccinationLock();
+    setTimeout(() => document.getElementById('vax-access-code').focus(), 0);
+  });
+
+  document.getElementById('vax-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = document.getElementById('vax-save-btn');
+    const payload = Object.fromEntries(new FormData(form).entries());
+    button.disabled = true;
+    setVaxMessage('vax-form-msg', 'Encrypting and saving…');
+    try {
+      await vaccinationRequest(LOG_VACCINATION_API, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      form.reset();
+      document.getElementById('vax-date').value = todayManila();
+      setVaxMessage('vax-form-msg', 'Vaccination record added.', 'ok');
+      await loadVaccinations();
+    } catch (error) {
+      if (error.status === 401) showVaccinationLock('Your access expired. Unlock the records again.');
+      else setVaxMessage('vax-form-msg', error.message, 'error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  async function deleteVaccination(record) {
+    if (!confirm(`Remove the ${record.vaccine} record from ${record.date}?`)) return;
+    setVaxMessage('vax-form-msg', 'Removing record…');
+    try {
+      await vaccinationRequest(LOG_VACCINATION_API, {
+        method: 'DELETE',
+        body: JSON.stringify({ id: record.id }),
+      });
+      setVaxMessage('vax-form-msg', 'Record removed.', 'ok');
+      await loadVaccinations();
+    } catch (error) {
+      setVaxMessage('vax-form-msg', error.message, 'error');
+    }
   }
 </script>
 </body>

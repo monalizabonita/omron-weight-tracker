@@ -5,7 +5,7 @@ readings) via an iOS Shortcuts automation — no app store submission, no OMRON 
 account needed. Also tracks Tirzepatide injection dates, logged manually from the
 **Tirzepatide** tab on the site itself.
 
-**Live site:** https://omron-weight-tracker.vercel.app
+**Live site:** https://health.monbons.xyz
 
 ## How it works
 
@@ -29,6 +29,15 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
 3. The tab shows the last injection date, days since, and the next expected date
    on the fixed every-Monday schedule.
 
+**Vaccination records** (manual and encrypted):
+1. Open the **Vaccination Records** tab and unlock it with the same private access code used by
+   the Apple Health Shortcut (`WEBHOOK_SECRET`).
+2. Add the vaccine, administration date, and optional dose, provider, lot number, next due date,
+   and notes. Records can also be removed from the tab.
+3. The API encrypts each complete record with AES-256-GCM before committing it to
+   `data/vaccinations.json`. The repository is public, but vaccine details are not readable there;
+   both read and write APIs require the access code.
+
 ## Why this exists instead of a "real" OMRON integration
 
 OMRON does have a data API (Omron Wellness API / OMRON Connect Create), but it's a
@@ -45,6 +54,9 @@ which is what this repo implements.
 | `GH_TOKEN` | GitHub token with contents write access to this repo, used by the serverless function to commit new readings |
 | `GH_REPO` | `monalizabonita/omron-weight-tracker` |
 | `WEBHOOK_SECRET` | Shared secret the Shortcut must send as `Authorization: Bearer <secret>` (not required by the Tirzepatide tab's manual entry — that endpoint is unauthenticated) |
+
+`WEBHOOK_SECRET` also unlocks the encrypted Vaccination Records tab. The browser can remember it
+on the current device; choosing **Lock** removes the saved copy from browser storage.
 
 ## Request format
 
