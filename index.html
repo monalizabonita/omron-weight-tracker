@@ -64,6 +64,32 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+  .access-gate {
+    min-height: 100vh; display: grid; place-items: center; padding: 24px;
+  }
+  .access-gate[hidden], .page[hidden] { display: none; }
+  .access-card {
+    width: min(100%, 430px); padding: 32px; border: 1px solid var(--border); border-radius: 22px;
+    background: var(--card); box-shadow: var(--shadow); text-align: center;
+  }
+  .access-mark {
+    display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 18px;
+    border-radius: 16px; background: var(--series-wash); color: var(--series); font-size: 1.45rem;
+  }
+  .access-card h1 { margin: 0 0 8px; font-size: 1.45rem; letter-spacing: -.025em; }
+  .access-card .subtitle { line-height: 1.55; }
+  .site-access-form { display: grid; gap: 12px; margin-top: 24px; text-align: left; }
+  .site-access-form label { color: var(--muted); font-size: .76rem; font-weight: 700; }
+  .site-access-form input {
+    width: 100%; min-height: 46px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; background: var(--page); color: var(--text); font: inherit;
+  }
+  .site-access-form button {
+    min-height: 46px; border: 0; border-radius: 10px; padding: 10px 16px;
+    background: var(--series); color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+  }
+  .site-access-form button:disabled { opacity: .58; cursor: default; }
+  .access-help { margin: 2px 0 0; color: var(--faint); font-size: .75rem; line-height: 1.5; text-align: center; }
   .page { max-width: 1120px; margin: 0 auto; padding: 38px 28px 64px; }
   .page-header {
     position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; gap: 24px;
@@ -223,7 +249,22 @@
 </style>
 </head>
 <body>
-<div class="page">
+<main class="access-gate" id="site-access-gate">
+  <section class="access-card" aria-labelledby="site-access-title">
+    <div class="access-mark" aria-hidden="true">&#9829;</div>
+    <h1 id="site-access-title">Private health dashboard</h1>
+    <p class="subtitle">Enter your health access code to continue.</p>
+    <form class="site-access-form" id="site-access-form">
+      <label for="site-access-code">Access code</label>
+      <input type="password" id="site-access-code" autocomplete="current-password" required autofocus>
+      <button type="submit" id="site-access-btn">Unlock dashboard</button>
+      <p class="form-msg" id="site-access-msg" role="status" aria-live="polite"></p>
+      <p class="access-help">Access remains unlocked while this browser tab is open.</p>
+    </form>
+  </section>
+</main>
+
+<div class="page" id="dashboard" hidden>
   <div class="page-header">
     <div class="page-header-copy">
       <p class="header-kicker">Personal health dashboard</p>
@@ -432,9 +473,52 @@
 <div class="tooltip" id="tooltip"></div>
 
 <script>
+  const SITE_ACCESS_API = '/api/site-access';
+  const SITE_ACCESS_KEY = 'health-site-access';
   const HISTORY_API = '/api/history';
   const REFRESH_MS = 5 * 60 * 1000;
   let activeRange = 'all';
+  let siteAccessCode = '';
+  let dashboardStarted = false;
+  let siteAccessAttempt = 0;
+
+  function savedSiteAccessCode() {
+    try { return sessionStorage.getItem(SITE_ACCESS_KEY) || ''; }
+    catch (_) { return ''; }
+  }
+
+  function saveSiteAccessCode(code) {
+    try { sessionStorage.setItem(SITE_ACCESS_KEY, code); }
+    catch (_) { /* Session storage can be unavailable in restricted browsers. */ }
+  }
+
+  function clearSiteAccessCode() {
+    try { sessionStorage.removeItem(SITE_ACCESS_KEY); }
+    catch (_) { /* Nothing else to clear. */ }
+  }
+
+  async function verifySiteAccess(code) {
+    const response = await fetch(SITE_ACCESS_API, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + code },
+    });
+    if (response.ok) return;
+    let body = {};
+    try { body = await response.json(); } catch (_) { /* Use the fallback message. */ }
+    const error = new Error(body.error || 'Unable to verify the access code right now.');
+    error.status = response.status;
+    throw error;
+  }
+
+  function startDashboard(code) {
+    siteAccessCode = code;
+    document.getElementById('site-access-gate').hidden = true;
+    document.getElementById('dashboard').hidden = false;
+    if (dashboardStarted) return;
+    dashboardStarted = true;
+    loadHistory();
+    setInterval(loadHistory, REFRESH_MS);
+  }
 
   function toKg(entry) {
     return entry.unit === 'lb' ? entry.weight * 0.453592 : entry.weight;
@@ -639,10 +723,8 @@
     });
   }
 
-  loadHistory();
-  setInterval(loadHistory, REFRESH_MS);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') loadHistory();
+    if (dashboardStarted && document.visibilityState === 'visible') loadHistory();
   });
   let resizeTimer = null;
   window.addEventListener('resize', () => {
@@ -882,7 +964,7 @@
     if (!document.getElementById('vax-date').value) document.getElementById('vax-date').value = today;
     if (vaccinationsInitialized) return;
     vaccinationsInitialized = true;
-    vaccinationAccessCode = localStorage.getItem(VAX_ACCESS_KEY) || '';
+    vaccinationAccessCode = siteAccessCode || localStorage.getItem(VAX_ACCESS_KEY) || '';
     if (vaccinationAccessCode) {
       loadVaccinations(true);
     } else {
@@ -1101,6 +1183,57 @@
     } catch (error) {
       setVaxMessage('vax-form-msg', error.message, 'error');
     }
+  }
+
+  document.getElementById('site-access-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = document.getElementById('site-access-code');
+    const button = document.getElementById('site-access-btn');
+    const message = document.getElementById('site-access-msg');
+    const code = input.value.trim();
+    if (!code) return;
+    const attempt = ++siteAccessAttempt;
+    button.disabled = true;
+    message.textContent = 'Checking…';
+    message.className = 'form-msg';
+    try {
+      await verifySiteAccess(code);
+      if (attempt !== siteAccessAttempt) return;
+      saveSiteAccessCode(code);
+      input.value = '';
+      startDashboard(code);
+    } catch (error) {
+      if (attempt !== siteAccessAttempt) return;
+      clearSiteAccessCode();
+      message.textContent = error.message;
+      message.className = 'form-msg error';
+      input.select();
+    } finally {
+      if (attempt === siteAccessAttempt) button.disabled = false;
+    }
+  });
+
+  const existingSiteCode = savedSiteAccessCode();
+  if (existingSiteCode) {
+    const attempt = ++siteAccessAttempt;
+    const button = document.getElementById('site-access-btn');
+    const message = document.getElementById('site-access-msg');
+    button.disabled = true;
+    message.textContent = 'Checking saved access…';
+    verifySiteAccess(existingSiteCode)
+      .then(() => {
+        if (attempt === siteAccessAttempt) startDashboard(existingSiteCode);
+      })
+      .catch(error => {
+        if (attempt !== siteAccessAttempt) return;
+        clearSiteAccessCode();
+        message.textContent = error.status === 401 ? 'Please enter your access code again.' : error.message;
+        message.className = 'form-msg error';
+        document.getElementById('site-access-code').focus();
+      })
+      .finally(() => {
+        if (attempt === siteAccessAttempt) button.disabled = false;
+      });
   }
 </script>
 </body>

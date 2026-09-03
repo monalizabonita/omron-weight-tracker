@@ -7,6 +7,10 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
 
 **Live site:** https://health.monbons.xyz
 
+The dashboard asks for the private health access code when it opens. It uses the same
+`VACCINATION_SECRET` as the encrypted vaccination records and remembers successful access only
+for the lifetime of the current browser tab.
+
 ## How it works
 
 **Weight** (automated):
@@ -21,9 +25,8 @@ account needed. Also tracks Tirzepatide injection dates, logged manually from th
 
 **Tirzepatide injections** (manual):
 1. On the **Tirzepatide** tab, pick a date and click "Log injection" — POSTs straight to
-   `/api/log-injection`, no auth (this endpoint is intentionally open, unlike
-   `/api/log-weight` — it's a personal single-user tracker with no Basic Auth on the
-   site at all, so gating just this one write path added friction without real security).
+   `/api/log-injection`. The dashboard entry screen limits casual access to this control, while
+   the endpoint itself remains unauthenticated for compatibility.
 2. That function commits the entry into `data/injections.json`, same GitHub-as-database
    pattern as weight. Entries can be removed from the same tab (`DELETE /api/log-injection`).
 3. The tab shows the last injection date, days since, and the next expected date
@@ -55,6 +58,10 @@ which is what this repo implements.
 | `GH_REPO` | `monalizabonita/omron-weight-tracker` |
 | `WEBHOOK_SECRET` | Shared secret the Shortcut must send as `Authorization: Bearer <secret>` (not required by the Tirzepatide tab's manual entry — that endpoint is unauthenticated) |
 | `VACCINATION_SECRET` | Separate access code for reading and changing encrypted vaccination records |
+
+`VACCINATION_SECRET` also unlocks the dashboard entry screen. If it is not configured, the site
+falls back to `WEBHOOK_SECRET` for backward compatibility. The entry screen protects the website
+UI, but weight history stored in a public GitHub repository remains publicly retrievable there.
 
 The browser can remember `VACCINATION_SECRET` on the current device; choosing **Lock** removes the
 saved copy from browser storage. If the dedicated secret is not configured, the API falls back to
